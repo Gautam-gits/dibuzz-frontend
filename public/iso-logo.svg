@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="#0284c7" />
+  <circle cx="100" cy="100" r="82" fill="#ffffff" />
+  <circle cx="100" cy="100" r="76" fill="#0f172a" />
+  <text x="100" y="92" font-family="'Outfit', sans-serif" font-weight="900" font-size="42" fill="#ffffff" text-anchor="middle">ISO</text>
+  <text x="100" y="122" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="20" fill="#38bdf8" text-anchor="middle">9001:2015</text>
+  <text x="100" y="142" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="12" fill="#94a3b8" text-anchor="middle">QMS CERTIFIED</text>
+</svg>
