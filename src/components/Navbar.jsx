@@ -22,14 +22,20 @@ export function Navbar({
       <div className="bg-slate-900 text-white text-[10px] sm:text-[11px] py-1.5 px-3 sm:px-8 border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex items-center justify-between font-mono">
           <div className="flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-none">
-            <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-sky-400 animate-pulse flex-shrink-0"></span>
-            <span className="font-bold text-sky-300 truncate">Govt. MCA & ISO Certified Division</span>
+            <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+            <span className="font-bold text-emerald-300 truncate">DIBUZZ DIGITAL PRIVATE LIMITED</span>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6 text-slate-300 flex-shrink-0">
-            <a href={`https://wa.me/91${(companyInfo.whatsapp || '9128458850').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-1.5 hover:text-sky-300 transition-colors">
+            {/* WhatsApp — 10 digit number, correct redirect */}
+            <a
+              href={`https://wa.me/91${(companyInfo.whatsapp || '9128458850').replace(/\D/g, '').slice(-10)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex items-center gap-1.5 hover:text-emerald-300 transition-colors"
+            >
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>WhatsApp: {companyInfo.whatsapp || '+91 9128458850'}</span>
+              <span>WhatsApp: {(companyInfo.whatsapp || '+91 9128458850').replace(/\D/g, '').slice(-10)}</span>
             </a>
             <span className="hidden sm:inline text-slate-700">|</span>
             <a href={`tel:${companyInfo.phone}`} className="flex items-center gap-1 hover:text-white transition-colors font-bold text-[11px]">
@@ -138,16 +144,10 @@ export function Navbar({
             <div className="hidden sm:flex items-center gap-2">
               <button
                 onClick={() => openAuthModal('login')}
-                className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-sky-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => openAuthModal('register')}
                 className="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-sm transition-all cursor-pointer flex items-center gap-1"
               >
                 <User className="w-3.5 h-3.5" />
-                <span>Register</span>
+                <span>Sign In</span>
               </button>
             </div>
           )}
@@ -237,21 +237,14 @@ export function Navbar({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs text-slate-600 font-medium">Access course modules & certificate portal:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => { openAuthModal('login'); setMobileMenuOpen(false); }}
-                      className="py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-white border border-slate-300 hover:bg-slate-100 text-center"
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      onClick={() => { openAuthModal('register'); setMobileMenuOpen(false); }}
-                      className="py-2.5 rounded-xl text-xs font-black text-white bg-sky-600 hover:bg-sky-700 shadow-sm text-center"
-                    >
-                      Register Free
-                    </button>
-                  </div>
+                  <p className="text-xs text-slate-600 font-medium">Sign in to access your portal:</p>
+                  {/* Register button hidden — only Sign In shown */}
+                  <button
+                    onClick={() => { openAuthModal('login'); setMobileMenuOpen(false); }}
+                    className="w-full py-2.5 rounded-xl text-xs font-black text-white bg-sky-600 hover:bg-sky-700 shadow-sm text-center"
+                  >
+                    Sign In
+                  </button>
                 </div>
               )}
             </div>

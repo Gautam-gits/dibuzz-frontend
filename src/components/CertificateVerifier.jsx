@@ -35,7 +35,7 @@ export function CertificateVerifier({ verifiedCertificates }) {
             <span>Public Certificate Registry</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-heading">
-            Verify ISO 9001:2015 Certificate
+            Verify MCA & MSME Recognized Certificate
           </h1>
           <p className="text-slate-600 text-sm mt-2 max-w-xl mx-auto font-medium">
             Validate official completion credentials issued by DIBUZZ DIGITAL PRIVATE LIMITED.
@@ -101,7 +101,7 @@ export function CertificateVerifier({ verifiedCertificates }) {
                   {result.studentName}
                 </h2>
                 <p className="text-sm text-slate-600 max-w-md mx-auto">
-                  has successfully completed the industrial training program in
+                  has successfully completed the online training program in
                 </p>
                 <h3 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
                   {result.courseTitle}
@@ -122,7 +122,7 @@ export function CertificateVerifier({ verifiedCertificates }) {
 
               <div className="pt-6 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center text-xs">
                 <div>
-                  <div className="font-bold text-slate-900">ISO 9001:2015</div>
+                  <div className="font-bold text-slate-900">MCA & MSME Recognized</div>
                   <div className="text-[10px] text-slate-500">Quality Management Standard</div>
                 </div>
                 <div>

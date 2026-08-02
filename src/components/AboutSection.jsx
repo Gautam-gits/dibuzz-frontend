@@ -3,11 +3,11 @@ import { ShieldCheck, Award, Building2, MapPin, Mail, Phone, Sparkles, ExternalL
 import { Logo } from './Logo';
 
 export function AboutSection({ companyInfo }) {
-  const whatsappNum = (companyInfo.whatsapp || '9128458850').replace(/\D/g, '');
-  const waUrl = `https://wa.me/91${whatsappNum.length > 10 ? whatsappNum.slice(-10) : whatsappNum}`;
+  const whatsappNum = (companyInfo.whatsapp || '9128458850').replace(/\D/g, '').slice(-10);
+  const waUrl = `https://wa.me/91${whatsappNum}`;
   const phoneUrl = `tel:${companyInfo.phone || '+919128458850'}`;
-  const mailUrl = `mailto:${companyInfo.email || 'contact@dibuzzdigital.com'}`;
-  const linkedinUrl = companyInfo.linkedin || "https://www.linkedin.com/company/dibuzzdigital";
+  const mailUrl = `mailto:support@dibuzz.in`;
+  const linkedinUrl = companyInfo.linkedin || "https://www.linkedin.com/in/dibuzz-digital-private-limited-87a25a426/";
 
   return (
     <section className="py-16 bg-white relative">
@@ -30,7 +30,7 @@ export function AboutSection({ companyInfo }) {
         {/* Corporate Accreditation Grid with MCA & MSME Logos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
           <div className="edumantra-card p-6 bg-white space-y-3">
-            <div className="w-14 h-14 rounded-xl bg-emerald-50/50 border border-emerald-200 flex items-center justify-center p-2">
+            <div className="w-20 h-20 rounded-xl bg-emerald-50/50 border border-emerald-200 flex items-center justify-center p-2.5">
               <img src="/mca-logo.svg" alt="Ministry of Corporate Affairs Logo" className="w-full h-full object-contain" />
             </div>
             <h3 className="text-base font-extrabold text-slate-900 font-heading">MCA Govt Registered</h3>
@@ -41,25 +41,25 @@ export function AboutSection({ companyInfo }) {
           </div>
 
           <div className="edumantra-card p-6 bg-white space-y-3">
-            <div className="w-14 h-14 rounded-xl bg-orange-50/50 border border-orange-200 flex items-center justify-center p-2">
+            <div className="w-20 h-20 rounded-xl bg-emerald-50/50 border border-emerald-200 flex items-center justify-center p-2.5">
               <img src="/msme-logo.png" alt="MSME Govt of India Logo" className="w-full h-full object-contain" />
             </div>
             <h3 className="text-base font-extrabold text-slate-900 font-heading">MSME Govt Recognized</h3>
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
               Registered under Micro, Small and Medium Enterprises (MSME), Govt. of India for skill & digital training.
             </p>
-            <p className="text-[11px] font-mono text-orange-700 font-bold">UDYAM-BR-08-009182</p>
+            <p className="text-[11px] font-mono text-emerald-700 font-bold">UDYAM-BR-26-0242688</p>
           </div>
 
           <div className="edumantra-card p-6 bg-white space-y-3">
-            <div className="w-14 h-14 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center">
-              <Award className="w-7 h-7" />
+            <div className="w-20 h-20 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center">
+              <Award className="w-10 h-10" />
             </div>
-            <h3 className="text-base font-extrabold text-slate-900 font-heading">ISO 9001:2015 Certified</h3>
+            <h3 className="text-base font-extrabold text-slate-900 font-heading">Semester Training Division</h3>
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
-              Internationally recognized Quality Management System (QMS) standard for technical training.
+              Specialized online sprints for 3rd, 5th & 7th Semester engineering and diploma students.
             </p>
-            <p className="text-[11px] font-mono text-sky-700 font-bold">Cert No: ISO/2026/QMS-8910</p>
+            <p className="text-[11px] font-mono text-sky-700 font-bold">Flat ₹444 Enrollment</p>
           </div>
         </div>
 
@@ -69,7 +69,7 @@ export function AboutSection({ companyInfo }) {
           <div className="space-y-5">
             {/* Logo inside Contact Details */}
             <div className="flex items-center gap-3">
-              <Logo size="normal" />
+              <Logo size="xlarge" />
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
@@ -113,7 +113,7 @@ export function AboutSection({ companyInfo }) {
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">Official WhatsApp</span>
                   <a href={waUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-700 font-extrabold hover:underline inline-flex items-center gap-1">
-                    <span>{companyInfo.whatsapp || '+91 9128458850'}</span>
+                    <span>{whatsappNum}</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -127,7 +127,7 @@ export function AboutSection({ companyInfo }) {
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">Official Email</span>
                   <a href={mailUrl} className="text-xs text-slate-900 font-bold hover:text-sky-600 transition-colors">
-                    {companyInfo.email || 'contact@dibuzzdigital.com'}
+                    support@dibuzz.in
                   </a>
                 </div>
               </div>
@@ -141,9 +141,9 @@ export function AboutSection({ companyInfo }) {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">LinkedIn Profile</span>
-                  <a href={linkedinUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-700 font-bold hover:underline inline-flex items-center gap-1">
-                    <span>linkedin.com/company/dibuzzdigital</span>
-                    <ExternalLink className="w-3 h-3" />
+                  <a href="https://www.linkedin.com/in/dibuzz-digital-private-limited-87a25a426/" target="_blank" rel="noreferrer" className="text-[11px] text-sky-700 font-bold hover:underline inline-flex items-center gap-1 break-all">
+                    <span>https://www.linkedin.com/in/dibuzz-digital-private-limited-87a25a426/</span>
+                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
                   </a>
                 </div>
               </div>

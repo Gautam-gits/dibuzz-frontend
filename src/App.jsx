@@ -51,8 +51,13 @@ export default function App() {
 
   const [internships, setInternships] = useState(() => {
     try {
+      localStorage.removeItem('dibuzz_internships');
       const saved = localStorage.getItem('dibuzz_internships');
-      return saved ? JSON.parse(saved) : INITIAL_INTERNSHIPS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_INTERNSHIPS;
     } catch (e) {
       return INITIAL_INTERNSHIPS;
     }
@@ -60,8 +65,8 @@ export default function App() {
 
   const [users, setUsers] = useState(() => {
     try {
-      const saved = localStorage.getItem('dibuzz_users');
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      localStorage.removeItem('dibuzz_users');
+      return INITIAL_USERS;
     } catch (e) {
       return INITIAL_USERS;
     }
@@ -80,6 +85,15 @@ export default function App() {
     try {
       localStorage.removeItem('dibuzz_txns');
       return [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [faqs, setFaqs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dibuzz_faqs');
+      return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
     }
@@ -178,88 +192,76 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [authModal.isOpen, paymentCourse, detailCourse, mobileMenuOpen]);
 
+  const fetchData = async () => {
+    try {
+      const { data: dbCourses } = await supabase.from('courses').select('*').order('id', { ascending: false });
+      if (dbCourses) {
+        setCourses(dbCourses.map(c => ({
+          ...c,
+          originalPrice: Number(c.original_price || c.originalPrice),
+          price: Number(c.price),
+          studentsCount: Number(c.students_count || c.studentsCount || 100),
+          reviewsCount: Number(c.reviews_count || c.reviewsCount || 50),
+          highlights: typeof c.highlights === 'string' ? JSON.parse(c.highlights) : (c.highlights || []),
+          syllabus: typeof c.syllabus === 'string' ? JSON.parse(c.syllabus) : (c.syllabus || [])
+        })));
+      }
+
+      const { data: dbInts } = await supabase.from('internships').select('*').order('id', { ascending: false });
+      if (dbInts) setInternships(dbInts.map(i => ({
+        id: i.id,
+        title: i.title,
+        company: i.company,
+        type: i.type,
+        stipend: i.stipend,
+        mode: i.mode,
+        duration: i.duration,
+        openings: Number(i.openings || 5),
+        badge: i.badge,
+        skills: typeof i.skills === 'string' ? JSON.parse(i.skills) : (i.skills || []),
+        description: i.description,
+        image: i.image,
+        lastDateToApply: i.last_date || i.lastDateToApply || '2026'
+      })));
+
+      const { data: dbProfiles } = await supabase.from('profiles').select('*').order('id', { ascending: false });
+      if (dbProfiles) setUsers(dbProfiles.map(p => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        password: p.password,
+        role: p.role || 'student',
+        joinedDate: p.joined_date || p.joinedDate || 'Jan 01, 2025',
+        enrolledCourses: p.enrolled_courses || [],
+        certificates: p.certificates || []
+      })));
+      
+      const { data: dbFaqs } = await supabase.from('faqs').select('*').order('id', { ascending: false });
+      if (dbFaqs) setFaqs(dbFaqs);
+
+      setDbStatus('CONNECTED');
+    } catch (err) {
+      console.warn('Supabase fetch error:', err);
+      setDbStatus('FALLBACK');
+    }
+  };
+
   // 1. Fetch live data from Supabase Cloud DB on load
   useEffect(() => {
-    async function loadSupabaseData() {
-      try {
-        // Fetch Courses
-        const { data: dbCourses, error: courseErr } = await supabase.from('courses').select('*');
-        if (!courseErr && dbCourses && dbCourses.length > 0) {
-          const formatted = dbCourses.map(c => ({
-            ...c,
-            originalPrice: Number(c.original_price || c.originalPrice),
-            price: Number(c.price),
-            studentsCount: Number(c.students_count || c.studentsCount || 100),
-            reviewsCount: Number(c.reviews_count || c.reviewsCount || 50),
-            highlights: typeof c.highlights === 'string' ? JSON.parse(c.highlights) : c.highlights,
-            syllabus: typeof c.syllabus === 'string' ? JSON.parse(c.syllabus) : c.syllabus
-          }));
-          setCourses(formatted);
-          setDbStatus('CONNECTED');
-        }
+    fetchData();
 
-        // Fetch Internships
-        const { data: dbInts, error: intErr } = await supabase.from('internships').select('*');
-        if (!intErr && dbInts && dbInts.length > 0) {
-          const formattedInts = dbInts.map(i => ({
-            id: i.id,
-            title: i.title,
-            company: i.company,
-            type: i.type,
-            stipend: i.stipend,
-            mode: i.mode,
-            duration: i.duration,
-            openings: Number(i.openings || 5),
-            badge: i.badge,
-            skills: typeof i.skills === 'string' ? JSON.parse(i.skills) : (i.skills || []),
-            description: i.description,
-            lastDateToApply: i.last_date || i.lastDateToApply || '2026'
-          }));
-          setInternships(formattedInts);
-          setDbStatus('CONNECTED');
-        }
+    // Setup Realtime Subscriptions
+    const channel = supabase.channel('schema-db-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'internships' }, () => fetchData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'faqs' }, () => fetchData())
+          .subscribe();
 
-        // Fetch Profiles / Users
-        const { data: dbProfiles, error: profileErr } = await supabase.from('profiles').select('*');
-        if (!profileErr && dbProfiles && dbProfiles.length > 0) {
-          const formattedProfiles = dbProfiles.map(p => ({
-            id: p.id,
-            name: p.name,
-            email: p.email,
-            phone: p.phone,
-            role: p.role || 'student',
-            joinedDate: p.joined_date || p.joinedDate || '2026',
-            enrolledCourses: typeof p.enrolled_courses === 'string' ? JSON.parse(p.enrolled_courses) : (p.enrolled_courses || []),
-            certificates: typeof p.certificates === 'string' ? JSON.parse(p.certificates) : (p.certificates || [])
-          }));
-          setUsers(formattedProfiles);
-          setDbStatus('CONNECTED');
-        }
-
-        // Fetch Transactions
-        const { data: dbTxns, error: txnErr } = await supabase.from('transactions').select('*');
-        if (!txnErr && dbTxns && dbTxns.length > 0) {
-          const formattedTxns = dbTxns.map(t => ({
-            id: t.id,
-            userName: t.user_name || t.userName,
-            userEmail: t.user_email || t.userEmail,
-            courseTitle: t.course_title || t.courseTitle,
-            amount: Number(t.amount),
-            method: t.method,
-            status: t.status || 'SUCCESS',
-            date: t.created_at ? new Date(t.created_at).toLocaleString() : t.date
-          }));
-          setTransactions(formattedTxns);
-          setDbStatus('CONNECTED');
-        }
-
-      } catch (err) {
-        console.warn('Supabase fetch fallback:', err);
-        setDbStatus('FALLBACK');
-      }
-    }
-
-    loadSupabaseData();
+        return () => {
+          supabase.removeChannel(channel);
+        };
   }, []);
 
   // Save to localStorage as backup
@@ -288,20 +290,64 @@ export default function App() {
   }, [transactions]);
 
   useEffect(() => {
+    localStorage.setItem('dibuzz_faqs', JSON.stringify(faqs));
+  }, [faqs]);
+
+  useEffect(() => {
     localStorage.setItem('dibuzz_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
   // Auth Handlers
-  const handleLogin = (email, password) => {
+  const handleLogin = async (email, password) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    // Check users in current state
+    try {
+      // 1. Try DB first
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', cleanEmail)
+        .eq('password', cleanPass);
+        
+      if (!error && data && data.length > 0) {
+        const found = {
+          id: data[0].id,
+          name: data[0].name,
+          email: data[0].email,
+          phone: data[0].phone,
+          password: data[0].password,
+          role: data[0].role || 'student',
+          joinedDate: data[0].joined_date,
+          collegeRegNo: data[0].college_reg_no,
+          collegeName: data[0].college_name,
+          course: data[0].course,
+          branch: data[0].branch,
+          profileImage: data[0].profile_image,
+          enrolledCourses: data[0].enrolled_courses || [],
+          certificates: data[0].certificates || []
+        };
+        
+        setCurrentUser(found);
+        setAuthModal({ isOpen: false, mode: 'login' });
+        setActiveTab(found.role === 'admin' ? 'admin' : 'dashboard');
+        
+        // Ensure user is in local users state if not admin
+        if (!users.find(u => u.email === found.email)) {
+          setUsers(prev => [found, ...prev]);
+        }
+        return true;
+      }
+    } catch (err) {
+      console.error('Supabase login check failed:', err);
+    }
+
+    // 2. Check users in current state (fallback)
     let found = users.find(
-      u => u.email.toLowerCase() === cleanEmail && (u.password === cleanPass || !u.password)
+      u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
     );
 
-    // Fallback check in INITIAL_USERS list
+    // 3. Fallback check in INITIAL_USERS list
     if (!found) {
       found = INITIAL_USERS.find(
         u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
@@ -329,9 +375,15 @@ export default function App() {
       id: Date.now(),
       name: userData.name,
       email: userData.email,
+      password: userData.password,
       phone: userData.phone,
       role: 'student',
       joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      collegeRegNo: userData.collegeRegNo,
+      collegeName: userData.collegeName,
+      course: userData.course,
+      branch: userData.branch,
+      profileImage: userData.profileImage,
       enrolledCourses: [],
       certificates: []
     };
@@ -345,9 +397,15 @@ export default function App() {
       await supabase.from('profiles').insert([{
         name: newUser.name,
         email: newUser.email,
+        password: newUser.password,
         phone: newUser.phone,
         role: 'student',
         joined_date: newUser.joinedDate,
+        college_reg_no: newUser.collegeRegNo,
+        college_name: newUser.collegeName,
+        course: newUser.course,
+        branch: newUser.branch,
+        profile_image: newUser.profileImage,
         enrolled_courses: [],
         certificates: []
       }]);
@@ -581,6 +639,16 @@ export default function App() {
     }
   };
 
+  const handleResetRevenue = async () => {
+    setTransactions([]);
+    localStorage.removeItem('dibuzz_txns');
+    try {
+      await supabase.from('transactions').delete().neq('id', '0');
+    } catch (e) {
+      console.error('Supabase clear transactions catch:', e);
+    }
+  };
+
   const userEnrolledIds = currentUser?.enrolledCourses || [];
 
   return (
@@ -609,6 +677,7 @@ export default function App() {
               onOpenAuthModal={handleOpenAuthModal}
               companyInfo={companyInfo}
               courses={courses}
+              internships={internships}
               users={users}
               transactions={transactions}
             />
@@ -623,7 +692,15 @@ export default function App() {
               onNavigateToAdmin={() => handleTabChange('admin')}
             />
 
-            <HomeSections companyInfo={companyInfo} setActiveTab={handleTabChange} />
+            <HomeSections
+              faqs={faqs}
+              internships={internships}
+              companyInfo={companyInfo}
+              setActiveTab={handleTabChange}
+              currentUser={currentUser}
+              onOpenAuthModal={handleOpenAuthModal}
+              onEnrollCourse={handleEnrollTrigger}
+            />
 
             {/* Testimonials */}
             {TESTIMONIALS && TESTIMONIALS.length > 0 && (
@@ -672,6 +749,8 @@ export default function App() {
           <InternshipSection
             companyInfo={companyInfo}
             internships={internships}
+            currentUser={currentUser}
+            onOpenAuthModal={handleOpenAuthModal}
             onNavigateToAdmin={() => handleTabChange('admin')}
           />
         )}
@@ -688,9 +767,15 @@ export default function App() {
           <StudentDashboard
             currentUser={currentUser}
             courses={courses}
+            internships={internships}
             userTransactions={transactions.filter(t => t.userEmail === currentUser?.email)}
             verifiedCertificates={verifiedCertificates}
             setActiveTab={handleTabChange}
+            companyInfo={companyInfo}
+            onSelectCourse={handleSelectCourse}
+            onEnrollCourse={handleEnrollTrigger}
+            userEnrolledIds={userEnrolledIds}
+            onOpenAuthModal={handleOpenAuthModal}
           />
         )}
 
@@ -710,10 +795,13 @@ export default function App() {
             setUsers={setUsers}
             transactions={transactions}
             setTransactions={setTransactions}
+            onResetRevenue={handleResetRevenue}
             companyInfo={companyInfo}
             setCompanyInfo={setCompanyInfo}
             verifiedCertificates={verifiedCertificates}
             setVerifiedCertificates={setVerifiedCertificates}
+            faqs={faqs}
+            setFaqs={setFaqs}
           />
         )}
       </main>

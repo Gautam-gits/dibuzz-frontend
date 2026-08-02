@@ -1,962 +1,826 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, BookOpen, Users, CreditCard, Plus, Trash2, DollarSign, Sparkles, Save, Edit3, Briefcase } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import {
+  LayoutDashboard, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
+  X, RefreshCw, Database, Zap, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-export function AdminDashboard({ 
-  courses, 
-  setCourses, 
-  onAddCourse,
-  onDeleteCourse,
-  onUpdateCourse,
-  internships = [],
-  setInternships,
-  onAddInternship,
-  onDeleteInternship,
-  onUpdateInternship,
-  users, 
-  setUsers, 
-  transactions, 
-  companyInfo, 
-  setCompanyInfo,
-  verifiedCertificates,
-  setVerifiedCertificates
-}) {
-  const [activeAdminTab, setActiveAdminTab] = useState('courses');
+/* ─── Toast ─────────────────────────────────────────────────── */
+function Toast({ toasts, remove }) {
+  if (!toasts.length) return null;
+  return (
+    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-sm font-semibold backdrop-blur-md
+          ${t.type === 'success' ? 'bg-emerald-50 border-emerald-500/50 text-emerald-800' :
+            t.type === 'error'   ? 'bg-red-50 border-red-500/50 text-red-800' :
+            t.type === 'warn'    ? 'bg-amber-50 border-amber-500/50 text-amber-800' :
+                                   'bg-violet-50 border-violet-500/50 text-violet-800'}`}>
+          {t.type === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+          {t.type === 'error'   && <AlertCircle  className="w-4 h-4 shrink-0" />}
+          {(t.type === 'info' || t.type === 'warn') && <Zap className="w-4 h-4 shrink-0" />}
+          <span className="flex-1">{t.message}</span>
+          <button onClick={() => remove(t.id)} className="ml-2 opacity-60 hover:opacity-100 cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  // Add Course Modal State
-  const [showAddCourseModal, setShowAddCourseModal] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState('Full-Stack');
-  const [newPrice, setNewPrice] = useState(12999);
-  const [newOrigPrice, setNewOrigPrice] = useState(19999);
-  const [newDuration, setNewDuration] = useState('12 Weeks');
-  const [newDescription, setNewDescription] = useState('');
-  const [newImage, setNewImage] = useState('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80');
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const add = useCallback((message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts(p => [...p, { id, message, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+  }, []);
+  const remove = useCallback(id => setToasts(p => p.filter(t => t.id !== id)), []);
+  return { toasts, add, remove };
+}
 
-  // Edit Course Modal State
-  const [editingCourse, setEditingCourse] = useState(null);
+/* ─── Confirm Dialog ────────────────────────────────────────── */
+function Confirm({ msg, onOk, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6 text-red-500" />
+        </div>
+        <p className="text-sm text-slate-800 font-medium">{msg}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-all cursor-pointer">
+            Cancel
+          </button>
+          <button onClick={onOk}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // Add Internship Modal State
-  const [showAddInternshipModal, setShowAddInternshipModal] = useState(false);
-  const [intTitle, setIntTitle] = useState('');
-  const [intCompany, setIntCompany] = useState('Dibuzz Tech Labs');
-  const [intType, setIntType] = useState('Paid Stipend');
-  const [intStipend, setIntStipend] = useState('₹ 15,000 / month');
-  const [intMode, setIntMode] = useState('Remote / WFH');
-  const [intDuration, setIntDuration] = useState('12 Weeks');
-  const [intOpenings, setIntOpenings] = useState(8);
-  const [intSkills, setIntSkills] = useState('React, Node.js, Tailwind');
-  const [intDesc, setIntDesc] = useState('');
-  const [intLastDate, setIntLastDate] = useState('Aug 30, 2026');
+/* ─── Stat Card ─────────────────────────────────────────────── */
+function StatCard({ label, value, sub, icon: Icon, color, loading }) {
+  const C = {
+    emerald: { border: 'border-emerald-200', icon: 'text-emerald-500', val: 'text-slate-900', sub: 'text-emerald-600' },
+    violet:  { border: 'border-violet-200',  icon: 'text-violet-500',  val: 'text-slate-900', sub: 'text-violet-600'  },
+    indigo:  { border: 'border-indigo-200',  icon: 'text-indigo-500',  val: 'text-slate-900', sub: 'text-indigo-600'  },
+    amber:   { border: 'border-amber-200',   icon: 'text-amber-500',   val: 'text-slate-900', sub: 'text-amber-600'   },
+  }[color] || {};
+  return (
+    <div className={`bg-white border ${C.border} p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 space-y-2`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{label}</span>
+        <Icon className={`w-4 h-4 ${C.icon}`} />
+      </div>
+      <div className={`text-2xl sm:text-3xl font-black font-mono ${C.val}`}>
+        {loading ? <span className="inline-block w-20 h-7 bg-slate-100 rounded animate-pulse" /> : value}
+      </div>
+      <div className={`text-[10px] font-semibold ${C.sub}`}>{sub}</div>
+    </div>
+  );
+}
 
-  // Edit Internship Modal State
-  const [editingInternship, setEditingInternship] = useState(null);
+/* ─── Form Field wrapper ─────────────────────────────────────── */
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-[11px] text-slate-600 font-bold mb-1 uppercase tracking-wide">{label}</label>
+      {children}
+    </div>
+  );
+}
+const INP = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition-all";
 
-  const [announcementText, setAnnouncementText] = useState(companyInfo.announcement);
+/* ─── Modal wrapper ──────────────────────────────────────────── */
+function Modal({ title, icon: Icon, iconColor, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl my-auto">
+        <button onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-1.5 rounded-full cursor-pointer transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-3 mb-5">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${iconColor}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <h3 className="text-lg font-black text-slate-900">{title}</h3>
+        </div>
+        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+            {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const totalRevenue = transactions.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+/* ═══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════ */
+export function AdminDashboard({
+  courses = [], setCourses,
+  internships = [], setInternships,
+  users = [], setUsers,
+  transactions = [], setTransactions,
+  faqs = [], setFaqs,
+  companyInfo = {}
+, refreshData}) {
+  const { toasts, add, remove } = useToast();
+  const [tab,     setTab]     = useState('overview');
+  const [sem,     setSem]     = useState('All');
+  const [busy,    setBusy]    = useState(false);
+  const [db,      setDb]      = useState('online');
+  const [confirm, setConfirm] = useState(null);
 
-  // Course Actions
-  const handleAddCourseSubmit = (e) => {
-    e.preventDefault();
-    if (!newTitle) return;
+  /* modal states */
+  const [showAddInt, setShowAddInt] = useState(false);
+  const [showAddCrs, setShowAddCrs] = useState(false);
+  const [showAddUsr, setShowAddUsr] = useState(false);
+  const [showAddFaq, setShowAddFaq] = useState(false);
+  const [editInt,    setEditInt]    = useState(null);
+  const [editCrs,    setEditCrs]    = useState(null);
+  const [editFaq,    setEditFaq]    = useState(null);
 
-    const newCourseObj = {
-      id: Date.now(),
-      title: newTitle,
-      category: newCategory,
-      badge: 'New',
-      level: 'All Levels',
-      duration: newDuration,
-      rating: 5.0,
-      reviewsCount: 1,
-      studentsCount: 0,
-      originalPrice: Number(newOrigPrice),
-      price: Number(newPrice),
-      image: newImage,
-      description: newDescription || 'Comprehensive training program with ISO verified certificate.',
-      highlights: ['Live Mentor Cohort', 'ISO Certified', 'Capstone Projects'],
-      syllabus: [{ week: 'Week 1-4', topic: 'Fundamentals' }]
-    };
+  /* add-internship form */
+  const blankInt = { title: '', company: '', type: '', stipend: '', mode: '', duration: '', openings: '', badge: '', description: '', image: '', skills: '' };
+  const [iForm, setIForm] = useState(blankInt);
 
-    if (onAddCourse) onAddCourse(newCourseObj);
-    else setCourses([newCourseObj, ...courses]);
-    
-    setShowAddCourseModal(false);
-    setNewTitle('');
-    setNewDescription('');
+  /* add-course form */
+  const blankCrs = { title: '', category: '', price: '', originalPrice: '', description: '', image: '', duration: '', badge: '', level: '', rating: '', studentsCount: '', reviewsCount: '' };
+  const [cForm, setCForm] = useState(blankCrs);
+
+  /* add-user form */
+  const blankUsr = { name: '', email: '', phone: '', password: '', role: 'student' };
+  const [uForm, setUForm] = useState(blankUsr);
+
+  /* add-faq form */
+  const blankFaq = { question: '', answer: '', category: 'General' };
+  const [fForm, setFForm] = useState(blankFaq);
+
+  /* derived */
+  const totalRevenue = transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const adminCount   = users.filter(u => u.role === 'admin' || u.email === 'mananjayprasad7@gmail.com').length;
+  const filteredInts = internships.filter(i => {
+    if (sem === 'All')     return true;
+    if (sem === '3rd Sem') return i.badge?.includes('3rd');
+    if (sem === '5th Sem') return i.badge?.includes('5th');
+    if (sem === '7th Sem') return i.badge?.includes('7th');
+    return true;
+  });
+
+  /* ── Refresh ── */
+  const refresh = async () => {
+    setBusy(true);
+    if (refreshData) await refreshData();
+    add('Data synced with Supabase!', 'success');
+    setBusy(false);
   };
 
-  const handleDeleteCourseAction = (courseId) => {
-    if (confirm('Delete this course from the main page and Supabase Cloud DB?')) {
-      if (onDeleteCourse) onDeleteCourse(courseId);
-      setCourses(prev => prev.filter(c => Number(c.id) !== Number(courseId)));
+  /* ── Handlers for Internships ── */
+  const addInt = async (e) => {
+    e.preventDefault();
+    if (!iForm.title.trim()) { add('Title required', 'error'); return; }
+    setBusy(true);
+    const skills = iForm.skills ? iForm.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const payload = { title: iForm.title.trim(), company: iForm.company, type: iForm.type, stipend: iForm.stipend, mode: iForm.mode, duration: iForm.duration, openings: Number(iForm.openings), badge: iForm.badge, description: iForm.description, image: iForm.image, skills, last_date: 'Enrollment Open' };
+    try {
+      const { error } = await supabase.from('internships').insert([payload]);
+      if (error) throw error;
+      setShowAddInt(false); setIForm(blankInt);
+      if (refreshData) refreshData(); add('Internship published!', 'success');
+    } catch (e) { add('Error: ' + e.message, 'error'); }
+    finally { setBusy(false); }
+  };
+
+  const saveInt = async () => {
+    if (!editInt) return;
+    setBusy(true);
+    const skills = Array.isArray(editInt.skills) ? editInt.skills : (editInt.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+    const payload = { title: editInt.title, company: editInt.company, type: editInt.type, stipend: editInt.stipend, mode: editInt.mode, duration: editInt.duration, openings: Number(editInt.openings), badge: editInt.badge, description: editInt.description, image: editInt.image, skills, last_date: editInt.lastDateToApply || 'Enrollment Open' };
+    try {
+      const { error } = await supabase.from('internships').update(payload).eq('id', Number(editInt.id));
+      if (error) throw error;
+      setEditInt(null); if (refreshData) refreshData(); add('Internship updated!', 'success');
+    } catch (e) { add('Update failed: ' + e.message, 'error'); }
+    finally { setBusy(false); }
+  };
+
+  const delInt = (id) => setConfirm({
+    msg: 'Delete this internship program from Supabase?',
+    onOk: async () => {
+      setConfirm(null); setBusy(true);
+      try {
+        const { error } = await supabase.from('internships').delete().eq('id', Number(id));
+        if (error) throw error;
+        if (refreshData) refreshData(); add('Internship deleted!', 'success');
+      } catch (e) { add('Delete failed: ' + e.message, 'error'); }
+      finally { setBusy(false); }
     }
-  };
+  });
 
-  const handleEditSubmit = (e) => {
+  /* ── Handlers for Courses ── */
+  const addCrs = async (e) => {
     e.preventDefault();
-    if (!editingCourse) return;
-    if (onUpdateCourse) onUpdateCourse(editingCourse);
-    else setCourses(prev => prev.map(c => Number(c.id) === Number(editingCourse.id) ? editingCourse : c));
-    setEditingCourse(null);
+    if (!cForm.title.trim()) { add('Title required', 'error'); return; }
+    setBusy(true);
+    const payload = { title: cForm.title.trim(), category: cForm.category, price: Number(cForm.price), original_price: Number(cForm.originalPrice), description: cForm.description, image: cForm.image, badge: cForm.badge, level: cForm.level, duration: cForm.duration, rating: Number(cForm.rating), reviews_count: Number(cForm.reviewsCount), students_count: Number(cForm.studentsCount), highlights: [], syllabus: [] };
+    try {
+      const { error } = await supabase.from('courses').insert([payload]);
+      if (error) throw error;
+      setShowAddCrs(false); setCForm(blankCrs);
+      if (refreshData) refreshData(); add('Course published!', 'success');
+    } catch (e) { add('Error: ' + e.message, 'error'); }
+    finally { setBusy(false); }
   };
 
-  // Internship Actions
-  const handleAddInternshipSubmit = (e) => {
-    e.preventDefault();
-    if (!intTitle) return;
-
-    const newIntObj = {
-      id: Date.now(),
-      title: intTitle,
-      company: intCompany,
-      type: intType,
-      stipend: intStipend,
-      mode: intMode,
-      duration: intDuration,
-      openings: Number(intOpenings),
-      badge: intType === 'Paid Stipend' ? 'Hot Choice' : 'Academic Credit',
-      skills: intSkills.split(',').map(s => s.trim()),
-      description: intDesc || 'Gain practical real-world industry experience under senior leads.',
-      lastDateToApply: intLastDate
-    };
-
-    if (onAddInternship) onAddInternship(newIntObj);
-    else setInternships([newIntObj, ...internships]);
-
-    setShowAddInternshipModal(false);
-    setIntTitle('');
-    setIntDesc('');
+  const saveCrs = async () => {
+    if (!editCrs) return;
+    setBusy(true);
+    const payload = { title: editCrs.title, category: editCrs.category, price: Number(editCrs.price), original_price: Number(editCrs.originalPrice || editCrs.original_price), description: editCrs.description, image: editCrs.image, badge: editCrs.badge, level: editCrs.level, duration: editCrs.duration, rating: Number(editCrs.rating), reviews_count: Number(editCrs.reviewsCount || editCrs.reviews_count), students_count: Number(editCrs.studentsCount || editCrs.students_count) };
+    try {
+      const { error } = await supabase.from('courses').update(payload).eq('id', Number(editCrs.id));
+      if (error) throw error;
+      setEditCrs(null); if (refreshData) refreshData(); add('Course updated!', 'success');
+    } catch (e) { add('Update failed: ' + e.message, 'error'); }
+    finally { setBusy(false); }
   };
 
-  const handleDeleteInternshipAction = (intId) => {
-    if (confirm('Delete this internship from main website and Supabase Cloud DB?')) {
-      if (onDeleteInternship) onDeleteInternship(intId);
-      setInternships(prev => prev.filter(i => Number(i.id) !== Number(intId)));
+  const delCrs = (id) => setConfirm({
+    msg: 'Delete this course permanently from Supabase?',
+    onOk: async () => {
+      setConfirm(null); setBusy(true);
+      try {
+        const { error } = await supabase.from('courses').delete().eq('id', Number(id));
+        if (error) throw error;
+        if (refreshData) refreshData(); add('Course deleted!', 'success');
+      } catch (e) { add('Delete failed: ' + e.message, 'error'); }
+      finally { setBusy(false); }
     }
-  };
+  });
 
-  const handleEditInternshipSubmit = (e) => {
+  /* ── Handlers for Users ── */
+  const addUser = async (e) => {
     e.preventDefault();
-    if (!editingInternship) return;
-    if (onUpdateInternship) onUpdateInternship(editingInternship);
-    else setInternships(prev => prev.map(i => Number(i.id) === Number(editingInternship.id) ? editingInternship : i));
-    setEditingInternship(null);
+    if (!uForm.email.trim() || !uForm.name.trim()) { add('Name & Email required', 'error'); return; }
+    setBusy(true);
+    try {
+      const { error } = await supabase.from('profiles').insert([{
+        name: uForm.name, email: uForm.email, phone: uForm.phone, password: uForm.password, role: uForm.role, joined_date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      }]);
+      if (error) throw error;
+      setShowAddUsr(false); setUForm(blankUsr);
+      if (refreshData) refreshData(); add('User created successfully!', 'success');
+    } catch (e) { add('Error: ' + e.message, 'error'); }
+    finally { setBusy(false); }
   };
 
-  const handleSaveAnnouncement = () => {
-    setCompanyInfo({
-      ...companyInfo,
-      announcement: announcementText
-    });
-    alert('Main page announcement banner updated!');
+  const delUsr = (id) => setConfirm({
+    msg: 'Delete this user permanently from Supabase?',
+    onOk: async () => {
+      setConfirm(null); setBusy(true);
+      try {
+        const { error } = await supabase.from('profiles').delete().eq('id', Number(id));
+        if (error) throw error;
+        if (refreshData) refreshData(); add('User deleted!', 'success');
+      } catch (e) { add('Delete failed: ' + e.message, 'error'); }
+      finally { setBusy(false); }
+    }
+  });
+
+  /* ── Handlers for FAQs ── */
+  const addFaq = async (e) => {
+    e.preventDefault();
+    if (!fForm.question.trim() || !fForm.answer.trim()) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.from('faqs').insert([{
+        question: fForm.question, answer: fForm.answer, category: fForm.category
+      }]);
+      if (error) throw error;
+      setShowAddFaq(false); setFForm(blankFaq);
+      if (refreshData) refreshData(); add('FAQ Added!', 'success');
+    } catch (e) { add('Error: ' + e.message, 'error'); }
+    finally { setBusy(false); }
   };
+
+  const saveFaq = async () => {
+    if (!editFaq) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.from('faqs').update({
+        question: editFaq.question, answer: editFaq.answer, category: editFaq.category
+      }).eq('id', Number(editFaq.id));
+      if (error) throw error;
+      setEditFaq(null); if (refreshData) refreshData(); add('FAQ Updated!', 'success');
+    } catch (e) { add('Error: ' + e.message, 'error'); }
+    finally { setBusy(false); }
+  };
+
+  const delFaq = (id) => setConfirm({
+    msg: 'Delete this FAQ?',
+    onOk: async () => {
+      setConfirm(null); setBusy(true);
+      try {
+        const { error } = await supabase.from('faqs').delete().eq('id', Number(id));
+        if (error) throw error;
+        if (refreshData) refreshData(); add('FAQ Deleted!', 'success');
+      } catch (e) { add('Error: ' + e.message, 'error'); }
+      finally { setBusy(false); }
+    }
+  });
+
+  const TABS = [
+    { id: 'overview',    label: 'Overview',    icon: LayoutDashboard },
+    { id: 'internships', label: 'Internships', icon: Briefcase       },
+    { id: 'courses',     label: 'Courses',     icon: BookOpen        },
+    { id: 'users',       label: 'Users',       icon: Users           },
+    { id: 'revenue',     label: 'Revenue',     icon: IndianRupee     },
+    { id: 'faqs',        label: 'FAQs',        icon: HelpCircle      },
+  ];
 
   return (
-    <div className="py-12 bg-slate-50 min-h-screen text-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Banner */}
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-purple-200 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold">
-              <LayoutDashboard className="w-7 h-7" />
-            </div>
-            <div>
+    <>
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+        .fade-up { animation: fadeUp .22s ease forwards; }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+      `}</style>
+
+      <Toast toasts={toasts} remove={remove} />
+      {confirm && <Confirm msg={confirm.msg} onOk={confirm.onOk} onCancel={() => setConfirm(null)} />}
+
+      <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+
+        {/* ══ HEADER ══════════════════════════════════════════════ */}
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-slate-900 leading-none">DIBUZZ ADMIN</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 font-bold uppercase tracking-widest">Executive Console</div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-extrabold text-slate-900 font-heading">DIBUZZ Master Admin Panel</h1>
-                <span className="px-2.5 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-bold">
-                  ADMIN ACCESS
-                </span>
+                <a href="https://supabase.com/dashboard/project/ztccsmsmjkzhtyfklkyl/editor" target="_blank" rel="noopener noreferrer" 
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-[10px] font-bold text-emerald-700 transition-all cursor-pointer shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <Database className="w-3 h-3" />
+                  Open Supabase DB
+                </a>
+                <button onClick={refresh} disabled={busy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold transition-all cursor-pointer shadow-sm">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Sync Data</span>
+                </button>
               </div>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Manage main page programs, live internships, registered user data, and real-time transaction logs</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAddCourseModal(true)}
-              className="px-4 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-xs transition-all cursor-pointer flex items-center gap-2 text-xs sm:text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Course</span>
-            </button>
-
-            <button
-              onClick={() => setShowAddInternshipModal(true)}
-              className="px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all cursor-pointer flex items-center gap-2 text-xs sm:text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Internship</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Counter Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Platform Revenue</span>
-              <DollarSign className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono mt-2">
-              ₹{totalRevenue.toLocaleString('en-IN')}
-            </div>
-            <div className="text-[10px] text-emerald-700 mt-1 font-bold">Verified Payments</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Active Internships</span>
-              <Briefcase className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono mt-2">
-              {internships.length}
-            </div>
-            <div className="text-[10px] text-emerald-700 mt-1 font-bold">Paid & Free Roles</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Active Programs</span>
-              <BookOpen className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono mt-2">
-              {courses.length}
-            </div>
-            <div className="text-[10px] text-purple-700 mt-1 font-bold">Live Courses</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Registered Users</span>
-              <Users className="w-4 h-4 text-sky-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono mt-2">
-              {users.length}
-            </div>
-            <div className="text-[10px] text-sky-700 mt-1 font-bold">Students & Admins</div>
-          </div>
-        </div>
-
-        {/* Sub Nav */}
-        <div className="flex border-b border-slate-200 mb-8 gap-6 font-bold text-sm text-slate-600 overflow-x-auto">
-          <button
-            onClick={() => setActiveAdminTab('courses')}
-            className={`pb-3 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${activeAdminTab === 'courses' ? 'border-purple-600 text-purple-700 font-extrabold' : 'border-transparent hover:text-slate-900'}`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Courses ({courses.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('internships')}
-            className={`pb-3 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${activeAdminTab === 'internships' ? 'border-emerald-600 text-emerald-700 font-extrabold' : 'border-transparent hover:text-slate-900'}`}
-          >
-            <Briefcase className="w-4 h-4 text-emerald-600" />
-            <span>Manage Internships ({internships.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('users')}
-            className={`pb-3 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${activeAdminTab === 'users' ? 'border-purple-600 text-purple-700 font-extrabold' : 'border-transparent hover:text-slate-900'}`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Registered Users ({users.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('transactions')}
-            className={`pb-3 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${activeAdminTab === 'transactions' ? 'border-purple-600 text-purple-700 font-extrabold' : 'border-transparent hover:text-slate-900'}`}
-          >
-            <CreditCard className="w-4 h-4 text-amber-600" />
-            <span>Payment Log ({transactions.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('settings')}
-            className={`pb-3 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer border-b-2 ${activeAdminTab === 'settings' ? 'border-purple-600 text-purple-700 font-extrabold' : 'border-transparent hover:text-slate-900'}`}
-          >
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>Banner Text Settings</span>
-          </button>
-        </div>
-
-        {/* COURSES TAB */}
-        {activeAdminTab === 'courses' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Live Programs on Main Page</h3>
-              <button
-                onClick={() => setShowAddCourseModal(true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Course</span>
-              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
-                <div key={course.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="relative h-36 rounded-xl overflow-hidden mb-3 bg-slate-100">
-                      <img src={course.image} alt={course.title} className="w-full h-full object-cover" />
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-sky-600 text-white text-[10px] font-bold">
-                        {course.category}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-slate-900 text-base line-clamp-2 font-heading">{course.title}</h4>
-                    <p className="text-xs text-slate-600 mt-1 line-clamp-2 font-normal">{course.description}</p>
-                    
-                    <div className="mt-3 flex items-baseline gap-2 font-mono">
-                      <span className="text-lg font-bold text-slate-900">₹{course.price.toLocaleString('en-IN')}</span>
-                      <span className="text-xs text-slate-400 line-through">₹{course.originalPrice.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 mt-4 border-t border-slate-100 flex justify-between items-center">
-                    <button
-                      onClick={() => setEditingCourse({ ...course })}
-                      className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 text-xs font-bold hover:bg-sky-100 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteCourseAction(course.id)}
-                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </div>
+            {/* Tab row */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-0">
+              {TABS.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-b-2 ${
+                    tab === t.id
+                      ? 'text-violet-700 border-violet-600 bg-violet-50'
+                      : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-50'
+                  }`}>
+                  <t.icon className="w-4 h-4" />
+                  {t.label}
+                </button>
               ))}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* INTERNSHIPS TAB */}
-        {activeAdminTab === 'internships' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Manage Live Internships (Paid & Free Academic Credit)</h3>
-              <button
-                onClick={() => setShowAddInternshipModal(true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Internship</span>
-              </button>
-            </div>
+        {/* ══ BODY ════════════════════════════════════════════════ */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-up">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {internships.map((item) => (
-                <div key={item.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${item.type === 'Paid Stipend' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>
-                        {item.type}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono font-bold">{item.openings} Openings</span>
-                    </div>
-
-                    <h4 className="font-bold text-slate-900 text-base line-clamp-2 font-heading">{item.title}</h4>
-                    <p className="text-xs text-emerald-700 font-bold mt-1 font-mono">{item.stipend}</p>
-                    <p className="text-xs text-slate-600 mt-2 line-clamp-2 font-normal">{item.description}</p>
+          {/* ── OVERVIEW ── */}
+          {tab === 'overview' && (
+            <div className="space-y-8">
+              <div className="relative bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 overflow-hidden shadow-sm">
+                <div className="relative">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold uppercase tracking-wider mb-3">
+                    <ShieldCheck className="w-3 h-3" /> Real-time DB Synced
                   </div>
-
-                  <div className="pt-4 mt-4 border-t border-slate-100 flex justify-between items-center">
-                    <button
-                      onClick={() => setEditingInternship({ ...item })}
-                      className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 text-xs font-bold hover:bg-sky-100 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteInternshipAction(item.id)}
-                      className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
+                  <h1 className="text-2xl sm:text-4xl font-black text-slate-900">{companyInfo.name || 'DIBUZZ DIGITAL PRIVATE LIMITED'}</h1>
+                  <p className="text-xs text-slate-500 mt-2 font-medium">MCA & MSME Recognized · UDYAM-BR-26-0242688</p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* USERS TAB */}
-        {activeAdminTab === 'users' && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-sm text-slate-900 font-heading">
-              Registered Users & Student Accounts Data
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard label="Platform Revenue" value={`₹${totalRevenue.toLocaleString('en-IN')}`} sub={`${transactions.length} transactions`} icon={IndianRupee} color="emerald" loading={busy} />
+                <StatCard label="Internships"      value={internships.length || 8}  sub="Flat ₹444 Programs"     icon={Briefcase}    color="violet" loading={busy} />
+                <StatCard label="Courses"           value={courses.length}            sub="Active Tracks"           icon={BookOpen}     color="indigo" loading={busy} />
+                <StatCard label="Users"             value={users.length}              sub={`Admins: ${adminCount}`} icon={Users}        color="amber"  loading={busy} />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                <button onClick={() => { setShowAddInt(true); setTab('internships'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                  <div className="p-2 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <span className="font-bold text-slate-800">Add Internship</span>
+                </button>
+                <button onClick={() => { setShowAddCrs(true); setTab('courses'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <span className="font-bold text-slate-800">Add Course</span>
+                </button>
+                <button onClick={() => { setShowAddUsr(true); setTab('users'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors"><UserPlus className="w-5 h-5"/></div>
+                  <span className="font-bold text-slate-800">Add User</span>
+                </button>
+                <button onClick={() => { setShowAddFaq(true); setTab('faqs'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <span className="font-bold text-slate-800">Add FAQ</span>
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700 min-w-[650px]">
-                <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="p-4">User ID</th>
-                    <th className="p-4">Full Name</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">Role</th>
-                    <th className="p-4">Joined Date</th>
-                    <th className="p-4">Enrolled Courses</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50">
-                      <td className="p-4 font-mono font-bold text-slate-400">#{u.id}</td>
-                      <td className="p-4 font-bold text-slate-900">{u.name}</td>
-                      <td className="p-4 text-slate-600">{u.email}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-sky-100 text-sky-800 border border-sky-200'}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-4 text-slate-500">{u.joinedDate || '2026'}</td>
-                      <td className="p-4 font-mono font-bold text-emerald-700">{u.enrolledCourses ? u.enrolledCourses.length : 0} Courses</td>
-                    </tr>
+          )}
+
+          {/* ── INTERNSHIPS ── */}
+          {tab === 'internships' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Filter className="w-4 h-4 text-slate-400" />
+                  {['All', '3rd Sem', '5th Sem', '7th Sem'].map(f => (
+                    <button key={f} onClick={() => setSem(f)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        sem === f ? 'bg-violet-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      }`}>{f}</button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                  <span className="text-xs text-slate-500 font-mono font-medium">{filteredInts.length} items</span>
+                </div>
+                <button onClick={() => setShowAddInt(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer shrink-0">
+                  <Plus className="w-4 h-4" /> Add Internship
+                </button>
+              </div>
 
-        {/* TRANSACTIONS TAB */}
-        {activeAdminTab === 'transactions' && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-sm text-slate-900 font-heading flex flex-wrap justify-between items-center gap-2">
-              <span>Real-Time Payment Log</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-sky-700 font-bold">Total Revenue: ₹{totalRevenue.toLocaleString('en-IN')}</span>
-                {transactions.length > 0 && (
-                  <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to reset revenue and clear all payment logs to ₹0?')) {
-                        if (setTransactions) setTransactions([]);
-                        localStorage.removeItem('dibuzz_txns');
-                      }
-                    }}
-                    className="px-3 py-1 rounded-lg bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    Reset Revenue to ₹0
-                  </button>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {filteredInts.map(item => (
+                  <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-violet-300 hover:shadow-lg transition-all group flex flex-col">
+                    {item.image && (
+                      <div className="h-32 w-full overflow-hidden bg-slate-100">
+                        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      </div>
+                    )}
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md border bg-violet-50 text-violet-700 border-violet-200">
+                          {item.badge || '3rd Sem'}
+                        </span>
+                        <span className="text-xs font-black text-emerald-600 font-mono">{item.stipend || '₹444'}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm leading-snug mb-2">{item.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{item.description}</p>
+                      <div className="flex flex-wrap gap-1 mt-auto">
+                        {(Array.isArray(item.skills) ? item.skills : []).slice(0, 3).map((s, i) => (
+                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono">{s}</span>
+                        ))}
+                      </div>
+                      <div className="mt-3 text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {item.duration}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 p-3 bg-slate-50 border-t border-slate-100">
+                      <button onClick={() => setEditInt({ ...item, skills: Array.isArray(item.skills) ? item.skills.join(', ') : (item.skills || '') })}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-violet-50 hover:text-violet-700 text-slate-600 text-xs font-bold transition-all cursor-pointer">
+                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button onClick={() => delInt(item.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 text-xs font-bold transition-all cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            {transactions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[650px]">
-                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-4">TXN ID</th>
-                      <th className="p-4">Student</th>
-                      <th className="p-4">Course Program</th>
-                      <th className="p-4">Amount</th>
-                      <th className="p-4">Method</th>
-                      <th className="p-4">Date & Time</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {transactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-mono font-bold text-sky-700">{t.id}</td>
-                        <td className="p-4 font-bold text-slate-900">{t.userName} <br/><span className="text-[10px] text-slate-500 font-normal">{t.userEmail}</span></td>
-                        <td className="p-4 text-slate-800">{t.courseTitle}</td>
-                        <td className="p-4 font-mono text-slate-900 font-bold">₹{t.amount?.toLocaleString('en-IN')}</td>
-                        <td className="p-4 text-slate-500">{t.method}</td>
-                        <td className="p-4 text-slate-500">{t.date}</td>
+          )}
+
+          {/* ── COURSES ── */}
+          {tab === 'courses' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-slate-900">Courses</h2>
+                <button onClick={() => setShowAddCrs(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer">
+                  <Plus className="w-4 h-4" /> Add Course
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {courses.map(c => (
+                  <div key={c.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-300 hover:shadow-lg transition-all group flex flex-col">
+                    {c.image && (
+                      <div className="h-40 overflow-hidden bg-slate-100">
+                        <img src={c.image} alt={c.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      </div>
+                    )}
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex justify-between mb-3">
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">{c.category}</span>
+                        <span className="text-xs font-black text-emerald-600 font-mono">₹{Number(c.price).toLocaleString('en-IN')}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm mb-2">{c.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-3 mb-4">{c.description}</p>
+                      
+                    </div>
+                    <div className="flex gap-2 p-3 bg-slate-50 border-t border-slate-100">
+                      <button onClick={() => setEditCrs({ ...c, originalPrice: c.originalPrice || c.original_price })}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 text-xs font-bold transition-all cursor-pointer">
+                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button onClick={() => delCrs(c.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 text-xs font-bold transition-all cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── USERS ── */}
+          {tab === 'users' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-slate-900">Users</h2>
+                <button onClick={() => setShowAddUsr(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer">
+                  <UserPlus className="w-4 h-4" /> Add User
+                </button>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[600px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        {['#', 'Name', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
+                          <th key={h} className="px-4 py-3 text-slate-500 font-bold uppercase text-[10px] tracking-widest">{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {users.map(u => (
+                        <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 font-mono text-violet-600 font-bold text-[10px]">#{users.length - users.findIndex(x => x.id === u.id)}</td>
+                          <td className="px-4 py-3 font-bold text-slate-900">{u.name}</td>
+                          <td className="px-4 py-3 text-slate-600 font-medium">{u.email}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                              u.role === 'admin' ? 'bg-violet-100 text-violet-700 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            }`}>{u.role || 'student'}</span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{u.joinedDate || u.joined_date || '—'}</td>
+                          <td className="px-4 py-3">
+                            <button onClick={() => delUsr(u.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded-md cursor-pointer transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            ) : (
-              <div className="p-10 text-center text-slate-500 space-y-2">
-                <div className="text-2xl font-black text-slate-900 font-heading">Total Revenue: ₹0</div>
-                <p className="text-xs text-slate-600 font-medium">No active transactions logged. Initial revenue starts at ₹0 until students enroll in paid programs.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SETTINGS TAB */}
-        {activeAdminTab === 'settings' && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 max-w-2xl space-y-6 shadow-xs">
-            <h3 className="text-base font-bold text-slate-900 font-heading">Main Page Announcement Banner</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Top Banner Strip Text</label>
-              <textarea
-                rows={3}
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                className="w-full p-3 rounded-xl edumantra-input text-xs"
-              />
             </div>
-            <button
-              onClick={handleSaveAnnouncement}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              <span>Save Announcement</span>
-            </button>
-          </div>
-        )}
+          )}
 
+          {/* ── FAQS ── */}
+          {tab === 'faqs' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-slate-900">Manage FAQs</h2>
+                <button onClick={() => setShowAddFaq(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer">
+                  <Plus className="w-4 h-4" /> Add FAQ
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {faqs.map(faq => (
+                  <div key={faq.id} className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                     <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200 font-bold mb-2 inline-block">{faq.category}</span>
+                          <h4 className="font-bold text-slate-900 text-sm mb-1">{faq.question}</h4>
+                          <p className="text-xs text-slate-600">{faq.answer}</p>
+                        </div>
+                        <div className="flex flex-col gap-2 shrink-0">
+                           <button onClick={() => setEditFaq(faq)} className="p-1.5 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5" /></button>
+                           <button onClick={() => delFaq(faq.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── REVENUE ── */}
+          {tab === 'revenue' && (
+            <div className="space-y-6">
+               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[600px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        {['Txn ID', 'Student', 'Course', 'Amount', 'Method', 'Date'].map(h => (
+                          <th key={h} className="px-4 py-3 text-slate-500 font-bold uppercase text-[10px] tracking-widest">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {transactions.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 font-mono text-violet-600 text-[10px]">#{transactions.length - transactions.findIndex(x => x.id === t.id)}</td>
+                          <td className="px-4 py-3 text-slate-900 font-bold">{t.userName || t.user_name}</td>
+                          <td className="px-4 py-3 text-slate-700">{t.courseTitle || t.course_title}</td>
+                          <td className="px-4 py-3 text-emerald-600 font-black font-mono">₹{Number(t.amount).toLocaleString('en-IN')}</td>
+                          <td className="px-4 py-3 text-slate-600">{t.method}</td>
+                          <td className="px-4 py-3 text-slate-500">{t.date || t.created_at || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Add Course Modal */}
-      {showAddCourseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-4 my-8 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Add New Course</h3>
-              <button onClick={() => setShowAddCourseModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
+      {/* ══════════════ MODALS ══════════════ */}
+
+      {/* Add/Edit Internship */}
+      {(showAddInt || editInt) && (
+        <Modal title={editInt ? "Edit Internship" : "Add Internship"} icon={Briefcase} iconColor="bg-violet-50 text-violet-600 border-violet-200" onClose={() => { setShowAddInt(false); setEditInt(null); }}>
+          <form onSubmit={editInt ? (e) => { e.preventDefault(); saveInt(); } : addInt} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Program Title *">
+                <input required type="text" placeholder="e.g. Web Dev" value={editInt ? editInt.title : iForm.title} onChange={e => editInt ? setEditInt(p => ({...p, title: e.target.value})) : setIForm(p => ({ ...p, title: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Company">
+    <input type="text" value={editInt ? editInt.company : iForm.company} onChange={e => editInt ? setEditInt(p => ({...p, company: e.target.value})) : setIForm(p => ({ ...p, company: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Mode">
+    <input type="text" value={editInt ? editInt.mode : iForm.mode} onChange={e => editInt ? setEditInt(p => ({...p, mode: e.target.value})) : setIForm(p => ({ ...p, mode: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Stipend">
+                <input type="text" placeholder="Flat ₹444" value={editInt ? editInt.stipend : iForm.stipend} onChange={e => editInt ? setEditInt(p => ({...p, stipend: e.target.value})) : setIForm(p => ({ ...p, stipend: e.target.value }))} className={INP} />
+              </Field>
             </div>
-
-            <form onSubmit={handleAddCourseSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Course Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Master React 19 & Next.js 15 Sprint"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                  required
-                />
+            <Field label="Image URL">
+              <div className="relative">
+                 <ImageIcon className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
+                 <input type="text" placeholder="https://image-url..." value={editInt ? (editInt.image || '') : iForm.image} onChange={e => editInt ? setEditInt(p => ({...p, image: e.target.value})) : setIForm(p => ({...p, image: e.target.value}))} className={INP + " pl-9"} />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  >
-                    <option value="Full-Stack">Full-Stack</option>
-                    <option value="Data & AI">Data & AI</option>
-                    <option value="Automation">Automation</option>
-                    <option value="Design">Design</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Computer Applications">Computer Applications</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Duration</label>
-                  <input
-                    type="text"
-                    value={newDuration}
-                    onChange={(e) => setNewDuration(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Discounted Price (₹)</label>
-                  <input
-                    type="number"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Original Price (₹)</label>
-                  <input
-                    type="number"
-                    value={newOrigPrice}
-                    onChange={(e) => setNewOrigPrice(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Thumbnail Image URL</label>
-                <input
-                  type="text"
-                  value={newImage}
-                  onChange={(e) => setNewImage(e.target.value)}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Short Description</label>
-                <textarea
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Course summary..."
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddCourseModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-xs cursor-pointer"
-                >
-                  Publish to Main Page
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+               <Field label="Type">
+     <input type="text" placeholder="e.g. 3rd Semester Training" value={editInt ? editInt.type : iForm.type} onChange={e => editInt ? setEditInt(p => ({...p, type: e.target.value})) : setIForm(p => ({ ...p, type: e.target.value }))} className={INP} />
+   </Field>
+   <Field label="Openings">
+     <input type="number" value={editInt ? editInt.openings : iForm.openings} onChange={e => editInt ? setEditInt(p => ({...p, openings: e.target.value})) : setIForm(p => ({ ...p, openings: e.target.value }))} className={INP} />
+   </Field>
+   <Field label="Duration">
+                 <input type="text" value={editInt ? editInt.duration : iForm.duration} onChange={e => editInt ? setEditInt(p => ({...p, duration: e.target.value})) : setIForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
+               </Field>
+               <Field label="Semester Badge">
+                 <select value={editInt ? editInt.badge : iForm.badge} onChange={e => editInt ? setEditInt(p => ({...p, badge: e.target.value})) : setIForm(p => ({ ...p, badge: e.target.value }))} className={INP}>
+                   <option>3rd Sem</option><option>5th Sem</option><option>7th Sem</option>
+                 </select>
+               </Field>
+            </div>
+            <Field label="Skills (comma separated)">
+              <input type="text" placeholder="React, Node, Express" value={editInt ? (Array.isArray(editInt.skills) ? editInt.skills.join(', ') : editInt.skills) : iForm.skills} onChange={e => editInt ? setEditInt(p => ({...p, skills: e.target.value})) : setIForm(p => ({ ...p, skills: e.target.value }))} className={INP} />
+            </Field>
+            <Field label="Description">
+              <textarea rows={3} placeholder="Program overview..." value={editInt ? editInt.description : iForm.description} onChange={e => editInt ? setEditInt(p => ({...p, description: e.target.value})) : setIForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
+            </Field>
+            <button type="submit" disabled={busy}
+              className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50 mt-2">
+              {busy ? 'Saving...' : 'Save Internship'}
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* Edit Course Modal */}
-      {editingCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-4 my-8 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Edit Course Details</h3>
-              <button onClick={() => setEditingCourse(null)} className="text-slate-400 hover:text-slate-900">✕</button>
+      {/* Add/Edit Course */}
+      {(showAddCrs || editCrs) && (
+        <Modal title={editCrs ? "Edit Course" : "Add Course"} icon={BookOpen} iconColor="bg-indigo-50 text-indigo-600 border-indigo-200" onClose={() => { setShowAddCrs(false); setEditCrs(null); }}>
+          <form onSubmit={editCrs ? (e) => { e.preventDefault(); saveCrs(); } : addCrs} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Course Title *">
+                <input required type="text" value={editCrs ? editCrs.title : cForm.title} onChange={e => editCrs ? setEditCrs(p => ({...p, title: e.target.value})) : setCForm(p => ({ ...p, title: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Category">
+                <input type="text" value={editCrs ? editCrs.category : cForm.category} onChange={e => editCrs ? setEditCrs(p => ({...p, category: e.target.value})) : setCForm(p => ({ ...p, category: e.target.value }))} className={INP} />
+              </Field>
             </div>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Course Title</label>
-                <input
-                  type="text"
-                  value={editingCourse.title}
-                  onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={editingCourse.category}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  >
-                    <option value="Full-Stack">Full-Stack</option>
-                    <option value="Data & AI">Data & AI</option>
-                    <option value="Automation">Automation</option>
-                    <option value="Design">Design</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Computer Applications">Computer Applications</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Duration</label>
-                  <input
-                    type="text"
-                    value={editingCourse.duration}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, duration: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Price (₹)</label>
-                  <input
-                    type="number"
-                    value={editingCourse.price}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, price: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Original Price (₹)</label>
-                  <input
-                    type="number"
-                    value={editingCourse.originalPrice}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, originalPrice: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Thumbnail Image URL</label>
-                <input
-                  type="text"
-                  value={editingCourse.image}
-                  onChange={(e) => setEditingCourse({ ...editingCourse, image: e.target.value })}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={editingCourse.description}
-                  onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingCourse(null)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Update & Save Changes</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <Field label="Image URL">
+              <input type="text" value={editCrs ? editCrs.image : cForm.image} onChange={e => editCrs ? setEditCrs(p => ({...p, image: e.target.value})) : setCForm(p => ({...p, image: e.target.value}))} className={INP} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Duration">
+    <input type="text" placeholder="e.g. 12 Weeks" value={editCrs ? editCrs.duration : cForm.duration} onChange={e => editCrs ? setEditCrs(p => ({...p, duration: e.target.value})) : setCForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Badge">
+    <input type="text" placeholder="e.g. New" value={editCrs ? editCrs.badge : cForm.badge} onChange={e => editCrs ? setEditCrs(p => ({...p, badge: e.target.value})) : setCForm(p => ({ ...p, badge: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Level">
+    <input type="text" placeholder="e.g. All Levels" value={editCrs ? editCrs.level : cForm.level} onChange={e => editCrs ? setEditCrs(p => ({...p, level: e.target.value})) : setCForm(p => ({ ...p, level: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Price (₹)">
+                <input type="number" value={editCrs ? editCrs.price : cForm.price} onChange={e => editCrs ? setEditCrs(p => ({...p, price: e.target.value})) : setCForm(p => ({ ...p, price: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Original Price (₹)">
+    <input type="number" value={editCrs ? (editCrs.originalPrice || editCrs.original_price) : cForm.originalPrice} onChange={e => editCrs ? setEditCrs(p => ({...p, originalPrice: e.target.value})) : setCForm(p => ({ ...p, originalPrice: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Rating (0-5)">
+    <input type="number" step="0.1" value={editCrs ? editCrs.rating : cForm.rating} onChange={e => editCrs ? setEditCrs(p => ({...p, rating: e.target.value})) : setCForm(p => ({ ...p, rating: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Students Count">
+    <input type="number" value={editCrs ? (editCrs.studentsCount || editCrs.students_count) : cForm.studentsCount} onChange={e => editCrs ? setEditCrs(p => ({...p, studentsCount: e.target.value})) : setCForm(p => ({ ...p, studentsCount: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Reviews Count">
+    <input type="number" value={editCrs ? (editCrs.reviewsCount || editCrs.reviews_count) : cForm.reviewsCount} onChange={e => editCrs ? setEditCrs(p => ({...p, reviewsCount: e.target.value})) : setCForm(p => ({ ...p, reviewsCount: e.target.value }))} className={INP} />
+  </Field>
+            </div>
+            <Field label="Description">
+              <textarea rows={3} value={editCrs ? editCrs.description : cForm.description} onChange={e => editCrs ? setEditCrs(p => ({...p, description: e.target.value})) : setCForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
+            </Field>
+            <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
+              {busy ? 'Saving...' : 'Save Course'}
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* Add Internship Modal */}
-      {showAddInternshipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-4 my-8 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Add New Internship Role</h3>
-              <button onClick={() => setShowAddInternshipModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
-            </div>
-
-            <form onSubmit={handleAddInternshipSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Internship Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Full Stack Web Development Intern"
-                  value={intTitle}
-                  onChange={(e) => setIntTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Internship Type</label>
-                  <select
-                    value={intType}
-                    onChange={(e) => setIntType(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input font-bold"
-                  >
-                    <option value="Paid Stipend">💚 Paid Stipend</option>
-                    <option value="Free Academic">🎓 Free Academic Credit / Skill-India</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Stipend Amount / Benefit</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ₹ 15,000 / month or Free (Govt Cert)"
-                    value={intStipend}
-                    onChange={(e) => setIntStipend(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Location Mode</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Remote / WFH"
-                    value={intMode}
-                    onChange={(e) => setIntMode(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Duration</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 12 Weeks"
-                    value={intDuration}
-                    onChange={(e) => setIntDuration(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Number of Openings</label>
-                  <input
-                    type="number"
-                    value={intOpenings}
-                    onChange={(e) => setIntOpenings(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Required Skills (Comma separated)</label>
-                  <input
-                    type="text"
-                    value={intSkills}
-                    onChange={(e) => setIntSkills(e.target.value)}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Role Description</label>
-                <textarea
-                  rows={3}
-                  value={intDesc}
-                  onChange={(e) => setIntDesc(e.target.value)}
-                  placeholder="Internship responsibilities & requirements..."
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddInternshipModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs cursor-pointer"
-                >
-                  Publish Internship Role
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Add User */}
+      {showAddUsr && (
+        <Modal title="Add User" icon={UserPlus} iconColor="bg-amber-50 text-amber-600 border-amber-200" onClose={() => setShowAddUsr(false)}>
+           <form onSubmit={addUser} className="space-y-4">
+              <Field label="Full Name *">
+                <input required type="text" value={uForm.name} onChange={e => setUForm(p => ({...p, name: e.target.value}))} className={INP} />
+              </Field>
+              <Field label="Email Address *">
+                <input required type="email" value={uForm.email} onChange={e => setUForm(p => ({...p, email: e.target.value}))} className={INP} />
+              </Field>
+              <Field label="Phone">
+                <input type="text" value={uForm.phone} onChange={e => setUForm(p => ({...p, phone: e.target.value}))} className={INP} />
+              </Field>
+              <Field label="Password (Optional)">
+                <input type="text" placeholder="Leave empty for generic student" value={uForm.password} onChange={e => setUForm(p => ({...p, password: e.target.value}))} className={INP} />
+              </Field>
+              <Field label="Role">
+                <select value={uForm.role} onChange={e => setUForm(p => ({...p, role: e.target.value}))} className={INP}>
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </Field>
+              <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
+                Create User
+              </button>
+           </form>
+        </Modal>
       )}
 
-      {/* Edit Internship Modal */}
-      {editingInternship && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-4 my-8 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Edit Internship Details</h3>
-              <button onClick={() => setEditingInternship(null)} className="text-slate-400 hover:text-slate-900">✕</button>
-            </div>
-
-            <form onSubmit={handleEditInternshipSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Internship Title</label>
-                <input
-                  type="text"
-                  value={editingInternship.title}
-                  onChange={(e) => setEditingInternship({ ...editingInternship, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Internship Type</label>
-                  <select
-                    value={editingInternship.type}
-                    onChange={(e) => setEditingInternship({ ...editingInternship, type: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input font-bold"
-                  >
-                    <option value="Paid Stipend">💚 Paid Stipend</option>
-                    <option value="Free Academic">🎓 Free Academic Credit / Skill-India</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Stipend Amount / Benefit</label>
-                  <input
-                    type="text"
-                    value={editingInternship.stipend}
-                    onChange={(e) => setEditingInternship({ ...editingInternship, stipend: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Location Mode</label>
-                  <input
-                    type="text"
-                    value={editingInternship.mode}
-                    onChange={(e) => setEditingInternship({ ...editingInternship, mode: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Duration</label>
-                  <input
-                    type="text"
-                    value={editingInternship.duration}
-                    onChange={(e) => setEditingInternship({ ...editingInternship, duration: e.target.value })}
-                    className="w-full px-3.5 py-2.5 edumantra-input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={editingInternship.description}
-                  onChange={(e) => setEditingInternship({ ...editingInternship, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 edumantra-input"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingInternship(null)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Update Internship</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Add/Edit FAQ */}
+      {(showAddFaq || editFaq) && (
+        <Modal title={editFaq ? "Edit FAQ" : "Add FAQ"} icon={HelpCircle} iconColor="bg-emerald-50 text-emerald-600 border-emerald-200" onClose={() => { setShowAddFaq(false); setEditFaq(null); }}>
+          <form onSubmit={editFaq ? (e) => { e.preventDefault(); saveFaq(); } : addFaq} className="space-y-4">
+            <Field label="Question *">
+              <input required type="text" value={editFaq ? editFaq.question : fForm.question} onChange={e => editFaq ? setEditFaq(p => ({...p, question: e.target.value})) : setFForm(p => ({...p, question: e.target.value}))} className={INP} />
+            </Field>
+            <Field label="Answer *">
+              <textarea required rows={4} value={editFaq ? editFaq.answer : fForm.answer} onChange={e => editFaq ? setEditFaq(p => ({...p, answer: e.target.value})) : setFForm(p => ({...p, answer: e.target.value}))} className={INP + ' resize-none'} />
+            </Field>
+            <Field label="Category">
+              <input type="text" value={editFaq ? editFaq.category : fForm.category} onChange={e => editFaq ? setEditFaq(p => ({...p, category: e.target.value})) : setFForm(p => ({...p, category: e.target.value}))} className={INP} />
+            </Field>
+            <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
+              {busy ? 'Saving...' : 'Save FAQ'}
+            </button>
+          </form>
+        </Modal>
       )}
 
-    </div>
+    </>
   );
 }

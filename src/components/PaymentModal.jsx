@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, CheckCircle2, QrCode, CreditCard, Building, Lock, Printer } from 'lucide-react';
+import { X, ShieldCheck, CheckCircle2, QrCode, CreditCard, Building, Lock, Printer, BookOpen, Award, Clock, Star } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, companyInfo }) {
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [coupon, setCoupon] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStep, setProcessStep] = useState(1);
   const [paymentSuccessData, setPaymentSuccessData] = useState(null);
+  
+  const [editName, setEditName] = useState(currentUser?.name || '');
+  const [editEmail, setEditEmail] = useState(currentUser?.email || '');
+  const [editPhone, setEditPhone] = useState(currentUser?.phone || '');
+  const [editCollege, setEditCollege] = useState(currentUser ? `${currentUser.collegeName || currentUser.college_name || ''} - ${currentUser.branch || ''}` : '');
 
   const [cardNumber, setCardNumber] = useState('4532 1289 9012 3456');
   const [cardExpiry, setCardExpiry] = useState('08/29');
@@ -19,7 +25,7 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
 
   if (!course) return null;
 
-  const basePrice = course.price;
+  const basePrice = course.price || 444;
   const discountAmount = discountApplied ? Math.round(basePrice * 0.1) : 0;
   const taxableAmount = basePrice - discountAmount;
   const gstAmount = Math.round(taxableAmount * 0.18);
@@ -50,8 +56,8 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
         amount: finalTotal,
         method: paymentMethod === 'upi' ? `UPI (${upiId})` : paymentMethod === 'card' ? 'Credit Card (Visa)' : `Netbanking (${selectedBank})`,
         courseTitle: course.title,
-        studentName: currentUser ? currentUser.name : cardName,
-        studentEmail: currentUser ? currentUser.email : 'student@dibuzz.com'
+        studentName: editName || (currentUser ? currentUser.name : cardName),
+        studentEmail: editEmail || (currentUser ? currentUser.email : 'student@dibuzz.com')
       };
 
       setPaymentSuccessData(receiptData);
@@ -71,6 +77,7 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
   };
 
   return (
+    
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-8">
         
@@ -83,7 +90,89 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
           </button>
         )}
 
-        {/* Header */}
+        {/* VERIFICATION STEP */}
+        {!showPaymentGateway && !paymentSuccessData ? (
+          <div>
+            
+            <div className="p-6 sm:p-8 border-b border-slate-200 bg-slate-50">
+              <span className="px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 font-bold text-xs uppercase tracking-wider mb-3 inline-block">Review Details</span>
+              <h2 className="text-2xl font-black text-slate-900 font-heading">{course.title}</h2>
+              <p className="text-sm text-slate-500 font-medium mt-1 mb-5">{course.category || course.type || 'Professional Training'}</p>
+              
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-sm">
+                <h4 className="font-bold text-slate-900 mb-2 border-b border-slate-100 pb-2">Program Overview</h4>
+                <p className="text-slate-600 mb-4 text-xs leading-relaxed">{course.description || 'Join this premium program to accelerate your career and gain industry-relevant skills. Lifetime access included.'}</p>
+                <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-700">
+                   <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-sky-600"/> <span>{course.duration || 'Flexible Duration'}</span></div>
+                   <div className="flex items-center gap-2"><Award className="w-4 h-4 text-emerald-600"/> <span>ISO Certified</span></div>
+                   {course.stipend && <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-purple-600"/> <span>Stipend: {course.stipend}</span></div>}
+                   {course.skills && <div className="flex items-center gap-2"><Star className="w-4 h-4 text-orange-500"/> <span>{course.skills.length} Core Skills</span></div>}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8 space-y-6">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2 mb-4">Applicant Details (Auto-Synced)</h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <label className="block text-xs text-slate-500 font-bold uppercase mb-1">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 font-bold uppercase mb-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 font-bold uppercase mb-1">Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 font-bold uppercase mb-1">College & Branch</label>
+                    <input 
+                      type="text" 
+                      value={editCollege}
+                      onChange={(e) => setEditCollege(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-900 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+              </div>
+              
+              <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-sky-600 font-bold uppercase tracking-wider">Total Payable Amount</div>
+                  <div className="text-2xl font-black text-slate-900">₹{basePrice}</div>
+                </div>
+                <button
+                  onClick={() => setShowPaymentGateway(true)}
+                  className="px-6 py-3 rounded-xl bg-sky-600 text-white text-sm font-bold shadow-md hover:bg-sky-700 transition-all cursor-pointer"
+                >
+                  Proceed to Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full">
+{/* Header */}
         <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-sky-600 flex items-center justify-center text-white font-bold">
@@ -396,6 +485,8 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
           </div>
         )}
 
+            </div>
+        )}
       </div>
     </div>
   );
