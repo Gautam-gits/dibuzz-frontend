@@ -229,7 +229,7 @@ export function AdminDashboard({
     e.preventDefault();
     if (!cForm.title.trim()) { add('Title required', 'error'); return; }
     setBusy(true);
-    const payload = { title: cForm.title.trim(), category: cForm.category, price: 0, original_price: 0, description: cForm.description, image: cForm.image, badge: cForm.badge, level: cForm.level, duration: cForm.duration, rating: Number(cForm.rating), reviews_count: Number(cForm.reviewsCount), students_count: Number(cForm.studentsCount), highlights: [], syllabus: [] };
+    const payload = { title: cForm.title.trim(), category: cForm.category, price: Number(cForm.price), original_price: Number(cForm.originalPrice), description: cForm.description, image: cForm.image, badge: cForm.badge, level: cForm.level, duration: cForm.duration, rating: Number(cForm.rating), reviews_count: Number(cForm.reviewsCount), students_count: Number(cForm.studentsCount), highlights: [], syllabus: [] };
     try {
       const { error } = await supabase.from('courses').insert([payload]);
       if (error) throw error;
@@ -242,7 +242,7 @@ export function AdminDashboard({
   const saveCrs = async () => {
     if (!editCrs) return;
     setBusy(true);
-    const payload = { title: editCrs.title, category: editCrs.category, price: 0, original_price: 0, description: editCrs.description, image: editCrs.image, badge: editCrs.badge, level: editCrs.level, duration: editCrs.duration, rating: Number(editCrs.rating), reviews_count: Number(editCrs.reviewsCount || editCrs.reviews_count), students_count: Number(editCrs.studentsCount || editCrs.students_count) };
+    const payload = { title: editCrs.title, category: editCrs.category, price: Number(editCrs.price), original_price: Number(editCrs.originalPrice || editCrs.original_price), description: editCrs.description, image: editCrs.image, badge: editCrs.badge, level: editCrs.level, duration: editCrs.duration, rating: Number(editCrs.rating), reviews_count: Number(editCrs.reviewsCount || editCrs.reviews_count), students_count: Number(editCrs.studentsCount || editCrs.students_count) };
     try {
       const { error } = await supabase.from('courses').update(payload).eq('id', Number(editCrs.id));
       if (error) throw error;
@@ -537,13 +537,14 @@ export function AdminDashboard({
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="flex justify-between mb-3">
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">{c.category}</span>
+                        <span className="text-xs font-black text-emerald-600 font-mono">₹{Number(c.price).toLocaleString('en-IN')}</span>
                       </div>
                       <h4 className="font-bold text-slate-900 text-sm mb-2">{c.title}</h4>
                       <p className="text-xs text-slate-500 line-clamp-3 mb-4">{c.description}</p>
                       
                     </div>
                     <div className="flex gap-2 p-3 bg-slate-50 border-t border-slate-100">
-                      <button onClick={() => setEditCrs({ ...c })}
+                      <button onClick={() => setEditCrs({ ...c, originalPrice: c.originalPrice || c.original_price })}
                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 text-xs font-bold transition-all cursor-pointer">
                         <Edit3 className="w-3.5 h-3.5" /> Edit
                       </button>
@@ -748,6 +749,12 @@ export function AdminDashboard({
   </Field>
   <Field label="Level">
     <input type="text" placeholder="e.g. All Levels" value={editCrs ? editCrs.level : cForm.level} onChange={e => editCrs ? setEditCrs(p => ({...p, level: e.target.value})) : setCForm(p => ({ ...p, level: e.target.value }))} className={INP} />
+  </Field>
+  <Field label="Price (₹)">
+                <input type="number" value={editCrs ? editCrs.price : cForm.price} onChange={e => editCrs ? setEditCrs(p => ({...p, price: e.target.value})) : setCForm(p => ({ ...p, price: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Original Price (₹)">
+    <input type="number" value={editCrs ? (editCrs.originalPrice || editCrs.original_price) : cForm.originalPrice} onChange={e => editCrs ? setEditCrs(p => ({...p, originalPrice: e.target.value})) : setCForm(p => ({ ...p, originalPrice: e.target.value }))} className={INP} />
   </Field>
   <Field label="Rating (0-5)">
     <input type="number" step="0.1" value={editCrs ? editCrs.rating : cForm.rating} onChange={e => editCrs ? setEditCrs(p => ({...p, rating: e.target.value})) : setCForm(p => ({ ...p, rating: e.target.value }))} className={INP} />
