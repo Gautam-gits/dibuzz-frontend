@@ -424,7 +424,7 @@ export function AdminDashboard({
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Platform Revenue" value={`₹${totalRevenue.toLocaleString('en-IN')}`} sub={`${transactions.length} transactions`} icon={IndianRupee} color="emerald" loading={busy} />
-                <StatCard label="Internships"      value={internships.length || 8}  sub="Flat ₹444 Programs"     icon={Briefcase}    color="violet" loading={busy} />
+                <StatCard label="Internships"      value={internships.length || 0}  sub="Active Programs"     icon={Briefcase}    color="violet" loading={busy} />
                 <StatCard label="Courses"           value={courses.length}            sub="Active Tracks"           icon={BookOpen}     color="indigo" loading={busy} />
                 <StatCard label="Users"             value={users.length}              sub={`Admins: ${adminCount}`} icon={Users}        color="amber"  loading={busy} />
               </div>
@@ -483,7 +483,10 @@ export function AdminDashboard({
                         <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md border bg-violet-50 text-violet-700 border-violet-200">
                           {item.badge || '3rd Sem'}
                         </span>
-                        <span className="text-xs font-black text-emerald-600 font-mono">{item.stipend || '₹444'}</span>
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg mb-2 border border-slate-100">
+                          <span className="text-xs text-slate-500 font-semibold">Stipend/Fee:</span>
+                          <span className="text-xs font-black text-emerald-600 font-mono">{item.stipend || 'Coming Soon'}</span>
+                        </div>
                       </div>
                       <h4 className="font-bold text-slate-900 text-sm leading-snug mb-2">{item.title}</h4>
                       <p className="text-xs text-slate-500 line-clamp-2 mb-3">{item.description}</p>
@@ -681,9 +684,10 @@ export function AdminDashboard({
   <Field label="Mode">
     <input type="text" value={editInt ? editInt.mode : iForm.mode} onChange={e => editInt ? setEditInt(p => ({...p, mode: e.target.value})) : setIForm(p => ({ ...p, mode: e.target.value }))} className={INP} />
   </Field>
-  <Field label="Stipend">
-                <input type="text" placeholder="Flat ₹444" value={editInt ? editInt.stipend : iForm.stipend} onChange={e => editInt ? setEditInt(p => ({...p, stipend: e.target.value})) : setIForm(p => ({ ...p, stipend: e.target.value }))} className={INP} />
-              </Field>
+  <div>
+                <label className={LBL}>Stipend / Fee</label>
+                <input type="text" placeholder="e.g. Coming Soon or Free" value={editInt ? editInt.stipend : iForm.stipend} onChange={e => editInt ? setEditInt(p => ({...p, stipend: e.target.value})) : setIForm(p => ({ ...p, stipend: e.target.value }))} className={INP} />
+              </div>
             </div>
             <Field label="Image URL">
               <div className="relative">

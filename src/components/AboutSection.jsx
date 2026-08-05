@@ -59,7 +59,7 @@ export function AboutSection({ companyInfo }) {
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
               Specialized online sprints for 3rd, 5th & 7th Semester engineering and diploma students.
             </p>
-            <p className="text-[11px] font-mono text-sky-700 font-bold">Flat ₹444 Enrollment</p>
+            <p className="text-[11px] font-mono text-sky-700 font-bold">Coming Soon</p>
           </div>
         </div>
 

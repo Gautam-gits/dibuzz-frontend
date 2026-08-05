@@ -154,7 +154,7 @@ export function InternshipSection({ companyInfo, internships = [], currentUser, 
                     </div>
                     <div className="absolute top-2 right-2">
                       <span className="text-xs font-black text-white font-mono bg-emerald-600 px-2.5 py-0.5 rounded-md shadow-xs">
-                        {item.stipend || '₹444'}
+                        {item.stipend || 'Coming Soon'}
                       </span>
                     </div>
                   </div>
@@ -171,8 +171,8 @@ export function InternshipSection({ companyInfo, internships = [], currentUser, 
                     {/* Metrics */}
                     <div className="my-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-500 text-[11px]">Fee:</span>
-                        <span className="font-extrabold text-emerald-700 font-mono">{item.stipend || 'Flat ₹444 Only'}</span>
+                        <span className="text-slate-500 text-[11px]">Fee / Stipend:</span>
+                        <span className="font-extrabold text-emerald-700 font-mono">{item.stipend || 'Coming Soon'}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 text-[11px]">Duration:</span>
@@ -212,7 +212,7 @@ export function InternshipSection({ companyInfo, internships = [], currentUser, 
                     onClick={() => handleEnrollClick(item)}
                     className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-xs transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Enroll ₹444'}</span>
+                    <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Join Waitlist'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
