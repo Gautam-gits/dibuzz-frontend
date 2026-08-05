@@ -163,7 +163,7 @@ export function CourseExplorer({ searchQuery, setSearchQuery, courses = [], onSe
                     onClick={() => onEnrollCourse ? onEnrollCourse(course) : null}
                     className="px-4 py-2 rounded-xl text-xs font-black text-white bg-sky-600 hover:bg-sky-700 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
                   >
-                    Enroll ₹{course.price || 444} <ArrowRight className="w-3 h-3" />
+                    <span>Coming Soon</span> <ArrowRight className="w-3 h-3" />
                   </button>
                 )}
               </div>

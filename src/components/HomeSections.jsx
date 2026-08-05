@@ -224,7 +224,7 @@ export function HomeSections({ companyInfo, setActiveTab, currentUser, onOpenAut
                     onClick={() => handleEnrollClick(item)}
                     className="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-xs transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Join Waitlist'}</span>
+                    <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Coming Soon'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>

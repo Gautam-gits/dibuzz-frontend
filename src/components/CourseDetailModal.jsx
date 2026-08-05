@@ -131,28 +131,25 @@ export function CourseDetailModal({ course, onClose, onEnroll, isEnrolled }) {
           <div>
             <div className="text-xs text-slate-500 font-semibold">Course Fee</div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900 font-mono">₹{course.price.toLocaleString('en-IN')}</span>
-              <span className="text-xs text-slate-400 line-through font-mono">₹{course.originalPrice.toLocaleString('en-IN')}</span>
-              <span className="text-xs font-bold text-emerald-700 ml-2">Incl. GST Invoice</span>
+              <span className="text-2xl font-black text-slate-900 font-mono">Coming Soon</span>
             </div>
           </div>
 
           {isEnrolled ? (
             <button
               disabled
-              className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 cursor-default"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-emerald-50 text-emerald-600 font-extrabold flex items-center justify-center gap-2 border border-emerald-200"
             >
-              Already Enrolled
+              <CheckCircle2 className="w-5 h-5" /> Already Enrolled
             </button>
           ) : (
             <button
               onClick={() => {
-                onClose();
                 onEnroll(course);
               }}
-              className="w-full sm:w-auto px-8 py-3 rounded-xl font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
+              className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold flex items-center justify-center gap-2 transition-all shadow-md shadow-sky-600/20"
             >
-              <span>Enroll Now</span>
+              <span>Coming Soon</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
