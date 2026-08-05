@@ -150,7 +150,7 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
           </button>
           <button
             type="button"
-            onClick={() => { setMode('register'); setErrorMsg(''); setEmail(''); setPassword(''); }}
+            onClick={() => { setMode('register'); setErrorMsg(''); setEmail(''); setPassword(''); }}}
             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${mode === 'register' ? 'bg-white text-sky-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
           >
             Register
