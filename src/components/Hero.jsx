@@ -223,6 +223,7 @@ export function Hero({ setActiveTab, onOpenAuthModal, companyInfo, courses = [],
           </div>
         </div>
       </div>
+      </div>
 
     </section>
   );
