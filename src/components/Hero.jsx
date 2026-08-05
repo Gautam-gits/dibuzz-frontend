@@ -12,20 +12,9 @@ export function Hero({ setActiveTab, onOpenAuthModal, companyInfo, courses = [],
       {/* Main Full-Width Hero Section */}
       <div className="relative min-h-0 sm:min-h-[480px] lg:min-h-[520px] flex items-center py-6 sm:py-12">
         
-        {/* Right Side Background Image - Clean Text-Free Student Workspace Photo */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <img
-            src="/hero-student-clean.jpg?v=3"
-            alt="DIBUZZ DIGITAL PRIVATE LIMITED Mentors & Students"
-            className="w-full h-full object-cover object-center sm:object-right opacity-60 sm:opacity-85"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 sm:via-white/80 to-white/30 sm:to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-white/40"></div>
-        </div>
-
-        {/* Hero Content Overlay */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-          <div className="max-w-2xl space-y-4">
+        {/* Hero Left Content Overlay */}
+        <div className="flex flex-col md:flex-row items-center gap-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+          <div className="flex-1 max-w-2xl space-y-4">
             
             {/* Government & Corporate Accreditation Logos (MCA & MSME) */}
             <div className="inline-flex max-w-full items-center gap-3 sm:gap-5 py-2 px-3.5 sm:px-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xs mb-1">
@@ -109,10 +98,23 @@ export function Hero({ setActiveTab, onOpenAuthModal, companyInfo, courses = [],
                   <p className="text-xs font-black drop-shadow-sm leading-snug">{companyInfo.name || "DIBUZZ DIGITAL PRIVATE LIMITED"}</p>
                   <p className="text-[10px] text-sky-300 font-medium mt-0.5">Govt. MCA & MSME Recognized (UDYAM-BR-26-0242688)</p>
                 </div>
-              </div>
             </div>
 
           </div>
+          
+          {/* Right side image - Desktop Only */}
+          <div className="flex-1 w-full max-w-lg lg:max-w-none relative animate-slide-in-right z-10 hidden sm:block">
+            <div className="relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
+              <img
+                src="/hero-student-clean.jpg?v=3"
+                alt="DIBUZZ Student Success"
+                className="w-full h-full object-cover object-[center_top]"
+                style={{ maxHeight: '600px' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+            </div>
+          </div>
+
         </div>
 
       </div>
