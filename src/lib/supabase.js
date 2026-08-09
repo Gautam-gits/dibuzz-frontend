@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS public.certificates (
   grade TEXT DEFAULT 'Grade A+',
   status TEXT DEFAULT 'VERIFIED OFFICIAL',
   issued_by TEXT DEFAULT 'DIBUZZ DIGITAL PRIVATE LIMITED',
-  iso_cert TEXT DEFAULT 'ISO 9001:2015 Certified Division',
+  iso_cert TEXT DEFAULT 'Certified Division',
   mca_cin TEXT DEFAULT 'CIN: U72900DL2024PTC987654',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

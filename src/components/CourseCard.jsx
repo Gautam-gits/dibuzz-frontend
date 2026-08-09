@@ -72,7 +72,7 @@ export function CourseCard({ course, onSelectCourse, onEnrollCourse, isEnrolled 
               <span className="text-base sm:text-xl font-black text-slate-900 font-mono">Coming Soon</span>
             </div>
             <span className="text-[9px] sm:text-[10px] text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" /> ISO Verified
+              <ShieldCheck className="w-3 h-3 text-emerald-600" /> Verified
             </span>
           </div>
 

@@ -172,7 +172,7 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
                 <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="email"
-                  placeholder="your.email@gmail.com"
+                  placeholder="student@dibuzz.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 edumantra-input font-medium"
@@ -249,7 +249,7 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
                 <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="email"
-                  placeholder="your.email@gmail.com"
+                  placeholder="student@dibuzz.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 edumantra-input"

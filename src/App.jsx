@@ -234,7 +234,8 @@ export default function App() {
         role: p.role || 'student',
         joinedDate: p.joined_date || p.joinedDate || 'Jan 01, 2025',
         enrolledCourses: p.enrolled_courses || [],
-        certificates: p.certificates || []
+        certificates: p.certificates || [],
+        profileImage: p.profile_image || p.profileImage || null
       })));
       
       const { data: dbFaqs } = await supabase.from('faqs').select('*').order('id', { ascending: false });

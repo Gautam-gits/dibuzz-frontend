@@ -31,7 +31,7 @@ export function CourseDetailModal({ course, onClose, onEnroll, isEnrolled }) {
                 {course.category}
               </span>
               <span className="px-2.5 py-0.5 rounded text-xs font-extrabold bg-amber-400 text-slate-950 flex items-center gap-1">
-                <Award className="w-3.5 h-3.5" /> ISO Accredited
+                <Award className="w-3.5 h-3.5" /> Accredited
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight font-heading">
@@ -117,7 +117,7 @@ export function CourseDetailModal({ course, onClose, onEnroll, isEnrolled }) {
           <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 flex items-center gap-4">
             <ShieldCheck className="w-9 h-9 text-emerald-600 flex-shrink-0" />
             <div>
-              <div className="text-sm font-bold text-slate-900">ISO 9001:2015 Verified Certificate</div>
+              <div className="text-sm font-bold text-slate-900">Verified Certificate</div>
               <div className="text-xs text-slate-600 mt-0.5">
                 Issued by DIBUZZ DIGITAL PRIVATE LIMITED with verifiable CIN seal.
               </div>

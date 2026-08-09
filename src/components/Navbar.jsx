@@ -195,8 +195,12 @@ export function Navbar({
               {currentUser ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-sky-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
-                      {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                    <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold border-2 border-white shadow-sm shrink-0 overflow-hidden">
+                      {currentUser.profileImage ? (
+                        <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'
+                      )}
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="text-xs font-black text-slate-900 truncate">{currentUser.name}</p>
@@ -328,8 +332,8 @@ export function Navbar({
             {/* Drawer Footer Contact Info */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 text-slate-600 text-[11px] space-y-2 font-mono">
               <div className="flex items-center gap-2 text-slate-800 font-bold">
-                <Award className="w-3.5 h-3.5 text-sky-600" />
-                <span>Govt MCA & ISO 9001 Certified</span>
+                <Award className="w-4 h-4 text-sky-500" />
+                <span>Govt MCA Registered</span>
               </div>
               <a href={`tel:${companyInfo.phone}`} className="flex items-center gap-2 hover:text-sky-600 transition-colors">
                 <PhoneCall className="w-3.5 h-3.5 text-slate-400" />

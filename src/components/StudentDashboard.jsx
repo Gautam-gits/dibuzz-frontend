@@ -57,9 +57,18 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
         {/* OVERVIEW TAB */}
         {dashboardTab === 'overview' && (
           <div className="max-w-5xl mx-auto space-y-8">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 font-heading">Welcome back, {currentUser.name.split(' ')[0]}!</h1>
-              <p className="text-slate-500 mt-1 font-medium">Ready to continue your learning journey today?</p>
+            <div className="flex items-center gap-5">
+              {currentUser.profileImage ? (
+                <img src={currentUser.profileImage} alt="Profile" className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-sm shrink-0" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 font-bold text-2xl border-4 border-white shadow-sm shrink-0">
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+              )}
+              <div>
+                <h1 className="text-3xl font-black text-slate-900 font-heading">Welcome back, {currentUser.name ? currentUser.name.split(' ')[0] : 'Student'}!</h1>
+                <p className="text-slate-500 mt-1 font-medium">Ready to continue your learning journey today?</p>
+              </div>
             </div>
 
             {/* Stats Grid */}
@@ -195,7 +204,7 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
                     <Award className="w-8 h-8 text-slate-400" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2">No Certificates Yet</h3>
-                  <p className="text-slate-500 text-sm max-w-sm">Complete a course or internship program to earn your ISO certified certificate.</p>
+                  <p className="text-slate-500 text-sm max-w-sm">Complete a course or internship program to earn your certificate.</p>
                 </div>
              )}
           </div>

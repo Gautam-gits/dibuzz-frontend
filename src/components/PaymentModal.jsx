@@ -104,7 +104,7 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
                 <p className="text-slate-600 mb-4 text-xs leading-relaxed">{course.description || 'Join this premium program to accelerate your career and gain industry-relevant skills. Lifetime access included.'}</p>
                 <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-700">
                    <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-sky-600"/> <span>{course.duration || 'Flexible Duration'}</span></div>
-                   <div className="flex items-center gap-2"><Award className="w-4 h-4 text-emerald-600"/> <span>ISO Certified</span></div>
+                   <div className="flex items-center gap-2"><Award className="w-4 h-4 text-emerald-600"/> <span>Accredited</span></div>
                    {course.stipend && <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-purple-600"/> <span>Stipend: {course.stipend}</span></div>}
                    {course.skills && <div className="flex items-center gap-2"><Star className="w-4 h-4 text-orange-500"/> <span>{course.skills.length} Core Skills</span></div>}
                 </div>
@@ -186,7 +186,7 @@ export function PaymentModal({ course, currentUser, onClose, onPaymentSuccess, c
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-400 font-bold bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>ISO Certified Billing</span>
+            <span>Secure Billing</span>
           </div>
         </div>
 
