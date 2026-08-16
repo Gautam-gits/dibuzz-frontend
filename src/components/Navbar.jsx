@@ -114,15 +114,6 @@ export function Navbar({
         <div className="flex items-center gap-2">
           {currentUser ? (
             <div className="flex items-center gap-2">
-              {currentUser.role === 'admin' ? (
-                <button
-                  onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'admin' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'}`}
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Admin Panel</span>
-                </button>
-              ) : (
                 <button
                   onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
                   className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-sky-600 text-white shadow-xs' : 'bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100'}`}
@@ -130,7 +121,6 @@ export function Navbar({
                   <BookOpen className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Dashboard</span>
                 </button>
-              )}
 
               <button
                 onClick={logout}
@@ -212,15 +202,6 @@ export function Navbar({
                   </div>
 
                   <div className="flex gap-2 pt-1">
-                    {currentUser.role === 'admin' ? (
-                      <button
-                        onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
-                        className="flex-1 py-2 px-3 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
-                      >
-                        <LayoutDashboard className="w-3.5 h-3.5" />
-                        <span>Admin Panel</span>
-                      </button>
-                    ) : (
                       <button
                         onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
                         className="flex-1 py-2 px-3 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
@@ -228,7 +209,6 @@ export function Navbar({
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>My Dashboard</span>
                       </button>
-                    )}
 
                     <button
                       onClick={() => { logout(); setMobileMenuOpen(false); }}
