@@ -23,40 +23,73 @@ export function HomeSections({ companyInfo, setActiveTab, currentUser, onOpenAut
   const homeInternships = [
     {
       id: 1,
-      title: "Python Programming",
-      company: companyInfo.name || "DIBUZZ DIGITAL PRIVATE LIMITED",
-      price: 444,
+      title: "Internet of Things (IoT) (OFFLINE) 3rd...",
+      company: companyInfo.name || "DIBUZZ DIGITAL",
+      stipend: "Free",
+      originalPrice: "₹199",
       duration: "4 to 6 Weeks",
       badge: "3rd Sem",
-      image: "/python-card.jpg",
-      skills: ["Python 3", "Data Structures", "OOPs", "APIs"],
-      description: "Online Python programming internship covering data structures, object-oriented concepts, and API integration."
+      image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80",
+      skills: ["IoT", "Arduino", "Sensors"],
+      description: "Learn IoT fundamentals, sensors, and microcontrollers in an offline setting.",
+      status: "closed"
     },
     {
       id: 2,
-      title: "Web Development",
-      company: companyInfo.name || "DIBUZZ DIGITAL PRIVATE LIMITED",
-      price: 444,
+      title: "Python Programming (OFFLINE) 3rd...",
+      company: companyInfo.name || "DIBUZZ DIGITAL",
+      stipend: "Free",
+      originalPrice: "₹199",
       duration: "4 to 6 Weeks",
       badge: "3rd Sem",
-      image: "/webdev-card.jpg",
-      skills: ["HTML5", "CSS3", "JavaScript", "React"],
-      description: "Build modern responsive websites and web application interfaces with real-world development practices."
+      image: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=600&q=80",
+      skills: ["Python 3", "Data Structures", "OOPs", "APIs"],
+      description: "Offline Python programming internship covering data structures, object-oriented concepts.",
+      status: "closed"
     },
     {
       id: 3,
-      title: "Artificial Intelligence (AI)",
-      company: companyInfo.name || "DIBUZZ DIGITAL PRIVATE LIMITED",
-      price: 444,
+      title: "Machine Learning (OFFLINE) 3rd Semester",
+      company: companyInfo.name || "DIBUZZ DIGITAL",
+      stipend: "Free",
+      originalPrice: "₹199",
       duration: "4 to 6 Weeks",
       badge: "3rd Sem",
-      image: "/ai-card.jpg",
-      skills: ["AI Models", "Prompt Eng", "OpenAI APIs"],
-      description: "Explore cutting-edge Artificial Intelligence models, prompt engineering techniques, and LLM API integrations."
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+      skills: ["ML Models", "Data Science", "Python"],
+      description: "Explore Machine Learning models and data science algorithms.",
+      status: "closed"
+    },
+    {
+      id: 4,
+      title: "C & DCA",
+      company: companyInfo.name || "DIBUZZ DIGITAL",
+      stipend: "Free",
+      originalPrice: "₹199",
+      duration: "4 to 6 Weeks",
+      badge: "3rd Sem",
+      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
+      skills: ["C Programming", "Computer Basics", "DCA"],
+      description: "Fundamentals of C programming and Diploma in Computer Applications.",
+      status: "closed"
+    },
+    {
+      id: 5,
+      title: "Graphic Design",
+      company: companyInfo.name || "DIBUZZ DIGITAL",
+      stipend: "Free",
+      originalPrice: "₹199",
+      duration: "4 to 6 Weeks",
+      badge: "3rd Sem",
+      image: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80",
+      skills: ["Photoshop", "Illustrator", "Figma"],
+      description: "Master modern graphic design tools and UI/UX basics with hands-on projects.",
+      status: "closed"
     }
   ];
 
   const handleEnrollClick = (item) => {
+    if (item.status === 'closed') return;
     if (onEnrollCourse) {
       onEnrollCourse(item);
     }
@@ -155,8 +188,8 @@ export function HomeSections({ companyInfo, setActiveTab, currentUser, onOpenAut
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            { (internships.length > 0 ? internships.slice(0, 3) : homeInternships).map((item) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            { homeInternships.map((item) => (
               <div
                 key={item.id}
                 className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between group relative shadow-xs hover:border-sky-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
@@ -192,7 +225,12 @@ export function HomeSections({ companyInfo, setActiveTab, currentUser, onOpenAut
                     <div className="my-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 text-[11px]">Fee / Stipend:</span>
-                        <span className="font-extrabold text-emerald-700 font-mono">{item.stipend || 'Coming Soon'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-emerald-700 font-mono">{item.stipend || 'Coming Soon'}</span>
+                          {item.originalPrice && (
+                            <span className="text-[10px] text-slate-400 line-through font-mono">{item.originalPrice}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 text-[11px]">Duration:</span>
@@ -220,13 +258,22 @@ export function HomeSections({ companyInfo, setActiveTab, currentUser, onOpenAut
                   <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified Cert
                   </span>
-                  <button
-                    onClick={() => handleEnrollClick(item)}
-                    className="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Coming Soon'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  {item.status === 'closed' ? (
+                    <button
+                      disabled
+                      className="px-5 py-2 rounded-xl text-xs font-extrabold text-slate-500 bg-slate-200 cursor-not-allowed flex items-center gap-1"
+                    >
+                      <span>Closed</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleEnrollClick(item)}
+                      className="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>{item.stipend && item.stipend.includes('Free') ? 'Enroll Now' : 'Coming Soon'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
