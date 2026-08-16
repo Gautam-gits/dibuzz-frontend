@@ -331,7 +331,7 @@ export default function App() {
         
         setCurrentUser(found);
         setAuthModal({ isOpen: false, mode: 'login' });
-        setActiveTab(found.role === 'admin' ? 'admin' : 'dashboard');
+        setActiveTab(found.role === 'admin' ? 'home' : 'dashboard');
         
         // Ensure user is in local users state if not admin
         if (!users.find(u => u.email === found.email)) {
@@ -362,7 +362,7 @@ export default function App() {
       setCurrentUser(found);
       setAuthModal({ isOpen: false, mode: 'login' });
       if (found.role === 'admin') {
-        setActiveTab('admin');
+        setActiveTab('home');
       } else {
         setActiveTab('dashboard');
       }

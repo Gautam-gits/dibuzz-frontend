@@ -209,23 +209,6 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {/* Quick One Click Admin Buttons */}
-            <div className="pt-4 border-t border-slate-200 space-y-2">
-              <p className="text-[10px] text-center uppercase tracking-widest text-slate-500 font-bold">One-Click Quick Admin Login</p>
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={quickPrimaryAdmin}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-sky-400 text-slate-700 text-[11px] font-semibold text-left transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
-                  <div>
-                    <p className="text-slate-900 font-bold text-center">Mananjay (Owner)</p>
-                    <p className="text-[9px] text-slate-500 text-center">mananjayprasad7@gmail.com</p>
-                  </div>
-                </button>
-              </div>
-            </div>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-3 text-xs">
