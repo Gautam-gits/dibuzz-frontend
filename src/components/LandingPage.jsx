@@ -88,10 +88,21 @@ export function LandingPage({ setActiveTab, companyInfo }) {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-24 lg:py-32 bg-white relative">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+      <section id="services" className="py-24 lg:py-32 bg-white relative overflow-hidden">
+        {/* Services Background Image */}
+        <div className="absolute inset-0 z-0 overflow-hidden bg-slate-50">
+          <img 
+            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80" 
+            alt="Team Collaboration" 
+            className="w-full h-full object-cover object-center opacity-15 grayscale"
+          />
+          {/* Top & Bottom gradient mask so it blends into adjacent sections */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/50 to-white"></div>
+        </div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent z-10"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <h3 className="text-xs font-black text-sky-600 uppercase tracking-widest mb-4">WHAT WE DO</h3>
             <h2 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6">Services We Provide</h2>
