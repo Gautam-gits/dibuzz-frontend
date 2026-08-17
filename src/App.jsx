@@ -159,7 +159,7 @@ export default function App() {
   // Sync browser & mobile hardware back button (popstate event listener)
   useEffect(() => {
     if (!window.history.state) {
-      window.history.replaceState({ tab: 'home' }, '', '#home');
+      window.history.replaceState({ tab: 'landing' }, '', '#landing');
     }
 
     const handlePopState = (e) => {
@@ -185,7 +185,7 @@ export default function App() {
       if (e.state && e.state.tab) {
         setActiveTab(e.state.tab);
       } else {
-        setActiveTab('home');
+        setActiveTab('landing');
       }
     };
 
