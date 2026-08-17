@@ -124,6 +124,16 @@ export function Navbar({
                   </button>
                 )}
 
+                {currentUser.role === 'admin' && (
+                  <button
+                    onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'admin' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'}`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Admin Panel</span>
+                  </button>
+                )}
+
               <button
                 onClick={logout}
                 title="Logout"
@@ -211,6 +221,16 @@ export function Navbar({
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>My Dashboard</span>
+                      </button>
+                    )}
+
+                    {currentUser.role === 'admin' && (
+                      <button
+                        onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
+                        className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Admin Panel</span>
                       </button>
                     )}
 
