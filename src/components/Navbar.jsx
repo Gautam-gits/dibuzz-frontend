@@ -50,7 +50,7 @@ export function Navbar({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Brand Logo */}
-        <div onClick={() => { setActiveTab('home'); setMobileMenuOpen(false); }}>
+        <div onClick={() => { setActiveTab('landing'); setMobileMenuOpen(false); }}>
           <Logo size="normal" />
         </div>
 
@@ -171,7 +171,7 @@ export function Navbar({
             
             {/* Drawer Header */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
-              <div onClick={() => { setActiveTab('home'); setMobileMenuOpen(false); }}>
+              <div onClick={() => { setActiveTab('landing'); setMobileMenuOpen(false); }}>
                 <Logo size="small" />
               </div>
               <button

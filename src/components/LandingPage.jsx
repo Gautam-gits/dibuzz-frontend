@@ -1,186 +1,196 @@
 import React from 'react';
-import { ArrowRight, Code, PenTool, Megaphone, Edit3, TrendingUp, Settings, Briefcase } from 'lucide-react';
+import { ArrowRight, Code, PenTool, Megaphone, Edit3, TrendingUp, Settings, Briefcase, ChevronRight, Home } from 'lucide-react';
 
 export function LandingPage({ setActiveTab, companyInfo }) {
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-sky-200">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+      <header className="fixed top-0 inset-x-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-sky-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-sky-600/30">
               {companyInfo?.name?.charAt(0) || 'D'}
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
                 {companyInfo?.name?.split(' ')[0] || 'DIBUZZ'}
               </h1>
-              <p className="text-[9px] font-bold text-sky-600 tracking-[0.2em] uppercase">Digital</p>
+              <p className="text-[10px] font-bold text-sky-600 tracking-[0.25em] uppercase mt-0.5">Digital</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setActiveTab('home')}
-              className="px-5 py-2.5 rounded-xl bg-[#030B1E] hover:bg-sky-900 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-0.5"
             >
-              <Briefcase className="w-4 h-4" />
-              <span className="hidden sm:inline">Enroll for Internship</span>
-              <span className="sm:hidden">Enroll</span>
+              <Briefcase className="w-4 h-4 text-sky-400" />
+              <span className="hidden sm:inline">Internship Portal</span>
+              <span className="sm:hidden">Portal</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8 z-10">
-              <h1 className="text-5xl lg:text-7xl font-black text-[#030B1E] leading-[1.1] tracking-tight">
-                Solutions that<br/>drive businesses<br/>forward.
-              </h1>
-              <p className="text-lg text-slate-600 max-w-lg leading-relaxed font-medium">
-                {companyInfo?.name || 'Dibuzz'} delivers creative and effective digital solutions that help brands grow, connect and succeed.
-              </p>
-              <div className="flex items-center gap-4 text-xs font-bold tracking-widest text-[#030B1E] uppercase">
-                <div className="w-12 h-0.5 bg-[#030B1E]"></div>
-                STRATEGY. DESIGN. DEVELOPMENT. GROWTH.
+      {/* Hero Section with Blurred Image Background */}
+      <section className="relative min-h-[100vh] flex items-center pt-20 overflow-hidden">
+        {/* Background Image with Blur */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80" 
+            alt="Office Background" 
+            className="w-full h-full object-cover scale-105"
+          />
+          {/* Overlay to ensure text readability */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/85 to-slate-100/90 backdrop-blur-sm"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+            
+            {/* Left Content */}
+            <div className="space-y-8 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200 text-slate-800 text-xs font-bold uppercase tracking-widest shadow-sm backdrop-blur-md">
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                Strategy. Design. Development.
               </div>
-              <button 
-                onClick={() => setActiveTab('home')}
-                className="mt-4 px-8 py-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 cursor-pointer"
-              >
-                Explore Training & Internships <ArrowRight className="w-5 h-5" />
-              </button>
+              
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight">
+                Solutions that <br className="hidden lg:block" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-800">
+                  drive businesses
+                </span> <br className="hidden lg:block" />
+                forward.
+              </h1>
+              
+              <p className="text-lg sm:text-xl text-slate-600 leading-relaxed font-medium max-w-xl mx-auto lg:mx-0">
+                {companyInfo?.name || 'Dibuzz'} delivers creative and effective digital solutions that help brands grow, connect and succeed in the modern web.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 justify-center lg:justify-start">
+                <button 
+                  onClick={() => setActiveTab('home')}
+                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-600/30 hover:shadow-xl hover:-translate-y-1 cursor-pointer text-sm"
+                >
+                  Explore Internships <ArrowRight className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => {
+                    document.getElementById('services').scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer text-sm"
+                >
+                  Our Services
+                </button>
+              </div>
             </div>
             
-            <div className="relative mt-8 lg:mt-0">
-              <div className="absolute inset-0 bg-gradient-to-tr from-sky-200 to-transparent rounded-[2rem] transform rotate-3 scale-105"></div>
+            {/* Right Content / Image (Hidden on very small screens, shown on lg+) */}
+            <div className="relative mt-12 lg:mt-0 hidden lg:block">
+              <div className="absolute inset-0 bg-gradient-to-tr from-sky-300 to-blue-500 rounded-[3rem] transform rotate-3 scale-[1.02] opacity-20 blur-2xl"></div>
               <img 
                 src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80" 
                 alt="Modern Business Building" 
-                className="relative z-10 rounded-[2rem] shadow-2xl object-cover h-[400px] lg:h-[600px] w-full"
+                className="relative z-10 rounded-[3rem] shadow-2xl object-cover h-[600px] w-full ring-1 ring-slate-900/5"
               />
+              
+              {/* Floating Badge */}
+              <div className="absolute -bottom-8 -left-8 z-20 bg-white p-5 rounded-3xl shadow-xl border border-slate-100 flex items-center gap-5 animate-bounce-slow">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <TrendingUp className="w-7 h-7 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Success Rate</p>
+                  <p className="text-2xl font-black text-slate-900">99.9%</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Services Section */}
-      <section className="py-24 bg-white">
+      <section id="services" className="py-24 lg:py-32 bg-white relative">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <div className="text-center max-w-2xl mx-auto mb-20">
             <h3 className="text-xs font-black text-sky-600 uppercase tracking-widest mb-4">WHAT WE DO</h3>
-            <h2 className="text-4xl font-black text-[#030B1E] mb-4">Services We Provide</h2>
-            <p className="text-slate-600 font-medium">
+            <h2 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6">Services We Provide</h2>
+            <p className="text-slate-600 font-medium text-lg leading-relaxed">
               We offer end-to-end digital services to help businesses build a strong online presence and achieve real results.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Service 1 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <Code className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">Web Development</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We build fast, secure and scalable web solutions tailored to your business needs.</p>
-              </div>
-            </div>
-
-            {/* Service 2 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <PenTool className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">UI/UX Design</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We design intuitive and engaging interfaces that deliver seamless user experiences.</p>
-              </div>
-            </div>
-
-            {/* Service 3 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <Megaphone className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">Digital Marketing</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We create data-driven marketing strategies that increase visibility and drive growth.</p>
-              </div>
-            </div>
-
-            {/* Service 4 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <Edit3 className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">Content Creation</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We craft compelling content that tells your story and connects with your audience.</p>
-              </div>
-            </div>
-
-            {/* Service 5 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">Brand Strategy</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We help you build a strong brand identity that stands out in the market.</p>
-              </div>
-            </div>
-
-            {/* Service 6 */}
-            <div className="p-8 rounded-3xl bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-xl transition-all flex flex-col sm:flex-row gap-6 group">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-                <Settings className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-xl font-bold text-[#030B1E] mb-2">Software Solutions</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">We develop custom software solutions that streamline processes and scale your business.</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { icon: Code, title: "Web Development", desc: "We build fast, secure and scalable web solutions tailored to your business needs." },
+              { icon: PenTool, title: "UI/UX Design", desc: "We design intuitive and engaging interfaces that deliver seamless user experiences." },
+              { icon: Megaphone, title: "Digital Marketing", desc: "We create data-driven marketing strategies that increase visibility and drive growth." },
+              { icon: Edit3, title: "Content Creation", desc: "We craft compelling content that tells your story and connects with your audience." },
+              { icon: TrendingUp, title: "Brand Strategy", desc: "We help you build a strong brand identity that stands out in the market." },
+              { icon: Settings, title: "Software Solutions", desc: "We develop custom software solutions that streamline processes and scale your business." }
+            ].map((service, idx) => {
+              const IconComp = service.icon;
+              return (
+                <div key={idx} className="p-8 rounded-[2rem] bg-slate-50 hover:bg-white border border-slate-100 hover:border-sky-200 hover:shadow-2xl hover:shadow-sky-900/5 transition-all duration-300 group flex flex-col items-start">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shadow-sm group-hover:bg-sky-600 group-hover:text-white group-hover:scale-110 transition-all flex-shrink-0 mb-6">
+                    <IconComp className="w-8 h-8" />
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-sky-700 transition-colors">{service.title}</h4>
+                  <p className="text-slate-600 text-sm leading-relaxed">{service.desc}</p>
+                </div>
+              )
+            })}
           </div>
           
-          <div className="mt-16 text-center">
+          <div className="mt-20 text-center">
             <button 
               onClick={() => setActiveTab('home')}
-              className="inline-flex items-center gap-2 text-[#030B1E] font-bold hover:text-sky-600 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 text-slate-900 font-black hover:text-sky-600 transition-colors cursor-pointer text-lg group"
             >
-              Delivering Solutions. Driving Success. <ArrowRight className="w-5 h-5" />
+              Delivering Solutions. Driving Success. 
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>
       </section>
 
-      {/* Dark Footer / Why Dibuzz Section */}
-      <section className="bg-[#030B1E] py-24 relative overflow-hidden">
-        {/* Background Waves pattern */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.4) 0%, transparent 50%), radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.2) 0%, transparent 50%)' }}></div>
+      {/* Dark Footer CTA Section */}
+      <section className="bg-slate-900 py-24 relative overflow-hidden sm:m-6 sm:rounded-[3rem] shadow-2xl mb-12">
+        {/* Abstract shapes for background */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500 rounded-full mix-blend-screen filter blur-[128px] opacity-20"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-screen filter blur-[128px] opacity-20"></div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
-          <div className="max-w-xl">
-            <h3 className="text-xs font-black text-sky-500 uppercase tracking-widest mb-6">WHY {companyInfo?.name?.split(' ')[0] || 'DIBUZZ'}?</h3>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-              We turn ideas into<br/>digital success.
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-12 text-center md:text-left">
+          <div className="max-w-2xl">
+            <h3 className="text-xs font-black text-sky-400 uppercase tracking-widest mb-6">WHY {companyInfo?.name?.split(' ')[0] || 'DIBUZZ'}?</h3>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
+              We turn ideas into<br className="hidden md:block" /> digital success.
             </h2>
-            <p className="text-lg text-slate-300 mb-10 leading-relaxed">
+            <p className="text-lg text-slate-300 leading-relaxed font-medium max-w-xl mx-auto md:mx-0">
               Our expert team combines creativity, technology and strategy to deliver solutions that make an impact and create lasting value.
             </p>
           </div>
-          <div>
+          <div className="flex-shrink-0 w-full md:w-auto">
             <button 
               onClick={() => setActiveTab('home')}
-              className="px-10 py-5 rounded-2xl bg-white text-[#030B1E] hover:bg-sky-50 font-black flex items-center gap-3 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 cursor-pointer"
+              className="px-10 py-5 rounded-2xl bg-white text-slate-900 hover:bg-sky-50 font-black flex items-center justify-center gap-3 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 cursor-pointer w-full"
             >
-              Start Your Journey <ArrowRight className="w-5 h-5" />
+              Enter LMS Portal <ArrowRight className="w-5 h-5 text-sky-600" />
             </button>
           </div>
         </div>
       </section>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 4s ease-in-out infinite;
+        }
+      `}} />
     </div>
   );
 }
