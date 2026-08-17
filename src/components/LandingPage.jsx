@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Code, PenTool, Megaphone, Edit3, TrendingUp, Settings, Briefcase, ChevronRight, Home } from 'lucide-react';
+import { ArrowRight, Code, PenTool, Megaphone, Edit3, TrendingUp, Settings, Briefcase, ChevronRight, Home, GraduationCap } from 'lucide-react';
 
 export function LandingPage({ setActiveTab, companyInfo }) {
   return (
@@ -26,7 +26,7 @@ export function LandingPage({ setActiveTab, companyInfo }) {
               onClick={() => setActiveTab('home')}
               className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-0.5"
             >
-              <Briefcase className="w-4 h-4 text-sky-400" />
+              <GraduationCap className="w-5 h-5 text-sky-400" />
               <span className="hidden sm:inline">Internship Portal</span>
               <span className="sm:hidden">Portal</span>
             </button>
@@ -34,69 +34,56 @@ export function LandingPage({ setActiveTab, companyInfo }) {
         </div>
       </header>
 
-      {/* Hero Section with Blurred Image Background */}
+      {/* Hero Section with Blurred Background Image */}
       <section className="relative min-h-[100vh] flex items-center pt-20 overflow-hidden">
-        {/* Background Image with Blur */}
-        <div className="absolute inset-0 z-0">
+        {/* Full-width Background Image fading into the left */}
+        <div className="absolute inset-0 z-0 bg-slate-900">
           <img 
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80" 
-            alt="Office Background" 
-            className="w-full h-full object-cover scale-105"
+            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80" 
+            alt="Modern Business Building" 
+            className="w-full h-full object-cover object-center lg:object-right opacity-70 mix-blend-overlay"
           />
-          {/* Overlay to ensure text readability */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/85 to-slate-100/90 backdrop-blur-sm"></div>
+          {/* Gradients to fade out the image towards left and bottom */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-50 via-slate-50/95 to-slate-50/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent"></div>
+          {/* Extra blur and gradient mask to make it look like a website part */}
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-transparent to-slate-50/50 backdrop-blur-sm lg:backdrop-blur-md" style={{ WebkitMaskImage: 'linear-gradient(to left, black, transparent)' }}></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-            
-            {/* Left Content */}
-            <div className="space-y-8 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200 text-slate-800 text-xs font-bold uppercase tracking-widest shadow-sm backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
-                Strategy. Design. Development.
-              </div>
-              
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight">
-                Solutions that <br className="hidden lg:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-800">
-                  drive businesses
-                </span> <br className="hidden lg:block" />
-                forward.
-              </h1>
-              
-              <p className="text-lg sm:text-xl text-slate-600 leading-relaxed font-medium max-w-xl mx-auto lg:mx-0">
-                {companyInfo?.name || 'Dibuzz'} delivers creative and effective digital solutions that help brands grow, connect and succeed in the modern web.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 justify-center lg:justify-start">
-                <button 
-                  onClick={() => setActiveTab('home')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-600/30 hover:shadow-xl hover:-translate-y-1 cursor-pointer text-sm"
-                >
-                  Explore Internships <ArrowRight className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => {
-                    document.getElementById('services').scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer text-sm"
-                >
-                  Our Services
-                </button>
-              </div>
+          <div className="max-w-2xl space-y-8 text-center lg:text-left mx-auto lg:mx-0">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200 text-slate-800 text-xs font-bold uppercase tracking-widest shadow-sm backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+              Strategy. Design. Development.
             </div>
             
-            {/* Right Content / Image (Hidden on very small screens, shown on lg+) */}
-            <div className="relative mt-12 lg:mt-0 hidden lg:block">
-              <div className="absolute inset-0 bg-gradient-to-tr from-sky-300 to-blue-500 rounded-[3rem] transform rotate-3 scale-[1.02] opacity-20 blur-2xl"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80" 
-                alt="Modern Business Building" 
-                className="relative z-10 rounded-[3rem] shadow-2xl object-cover h-[600px] w-full ring-1 ring-slate-900/5"
-              />
-              
-
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight drop-shadow-sm">
+              Solutions that <br className="hidden lg:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-800">
+                drive businesses
+              </span> <br className="hidden lg:block" />
+              forward.
+            </h1>
+            
+            <p className="text-lg sm:text-xl text-slate-700 leading-relaxed font-medium max-w-xl mx-auto lg:mx-0 drop-shadow-sm">
+              {companyInfo?.name || 'Dibuzz'} delivers creative and effective digital solutions that help brands grow, connect and succeed in the modern web.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 justify-center lg:justify-start">
+              <button 
+                onClick={() => setActiveTab('home')}
+                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-600/30 hover:shadow-xl hover:-translate-y-1 cursor-pointer text-sm"
+              >
+                Explore Internships <ArrowRight className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => {
+                  document.getElementById('services').scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer text-sm"
+              >
+                Our Services
+              </button>
             </div>
           </div>
         </div>
