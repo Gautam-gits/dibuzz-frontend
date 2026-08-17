@@ -8,9 +8,12 @@ export function LandingPage({ setActiveTab, companyInfo }) {
       <header className="fixed top-0 inset-x-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-sky-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-sky-600/30">
-              {companyInfo?.name?.charAt(0) || 'D'}
-            </div>
+            <img 
+              src="/logo.png" 
+              onError={(e) => { e.target.onerror = null; e.target.src = "/logo.jpeg"; }} 
+              alt="Dibuzz Logo" 
+              className="w-12 h-12 object-contain rounded-xl drop-shadow-sm bg-white" 
+            />
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
                 {companyInfo?.name?.split(' ')[0] || 'DIBUZZ'}
@@ -93,16 +96,7 @@ export function LandingPage({ setActiveTab, companyInfo }) {
                 className="relative z-10 rounded-[3rem] shadow-2xl object-cover h-[600px] w-full ring-1 ring-slate-900/5"
               />
               
-              {/* Floating Badge */}
-              <div className="absolute -bottom-8 -left-8 z-20 bg-white p-5 rounded-3xl shadow-xl border border-slate-100 flex items-center gap-5 animate-bounce-slow">
-                <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                  <TrendingUp className="w-7 h-7 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Success Rate</p>
-                  <p className="text-2xl font-black text-slate-900">99.9%</p>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
