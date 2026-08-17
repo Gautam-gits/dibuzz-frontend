@@ -37,17 +37,15 @@ export function LandingPage({ setActiveTab, companyInfo }) {
       {/* Hero Section with Blurred Background Image */}
       <section className="relative min-h-[100vh] flex items-center pt-20 overflow-hidden">
         {/* Full-width Background Image fading into the left */}
-        <div className="absolute inset-0 z-0 bg-slate-900">
+        <div className="absolute inset-0 z-0 overflow-hidden bg-slate-50">
           <img 
             src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80" 
             alt="Modern Business Building" 
-            className="w-full h-full object-cover object-center lg:object-right opacity-70 mix-blend-overlay"
+            className="w-full h-full object-cover object-center lg:object-right opacity-85"
           />
           {/* Gradients to fade out the image towards left and bottom */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-50 via-slate-50/95 to-slate-50/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-50 via-slate-50/90 lg:via-slate-50/70 to-slate-50/20 lg:to-transparent"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent"></div>
-          {/* Extra blur and gradient mask to make it look like a website part */}
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-transparent to-slate-50/50 backdrop-blur-sm lg:backdrop-blur-md" style={{ WebkitMaskImage: 'linear-gradient(to left, black, transparent)' }}></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-20">
