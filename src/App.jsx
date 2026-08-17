@@ -12,6 +12,7 @@ import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
 import { InternshipSection } from './components/InternshipSection';
 import { HomeSections } from './components/HomeSections';
+import { LandingPage } from './components/LandingPage';
 
 import { supabase, SUPABASE_SQL_SETUP } from './lib/supabase';
 import {
@@ -111,7 +112,7 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState('CONNECTING'); // 'CONNECTED' | 'FALLBACK'
 
   // UI state
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('landing');
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -656,21 +657,27 @@ export default function App() {
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
 
       {/* Navigation Header */}
-      <Navbar
-        currentUser={currentUser}
-        activeTab={activeTab}
-        setActiveTab={handleTabChange}
-        openAuthModal={handleOpenAuthModal}
-        logout={handleLogout}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={handleToggleMobileMenu}
-        companyInfo={companyInfo}
-      />
+      {activeTab !== 'landing' && (
+        <Navbar
+          currentUser={currentUser}
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          openAuthModal={handleOpenAuthModal}
+          logout={handleLogout}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={handleToggleMobileMenu}
+          companyInfo={companyInfo}
+        />
+      )}
 
       {/* Main Page Content */}
       <main className="flex-1">
+        {activeTab === 'landing' && (
+          <LandingPage setActiveTab={handleTabChange} companyInfo={companyInfo} />
+        )}
+        
         {activeTab === 'home' && (
           <>
             <Hero
@@ -808,7 +815,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer companyInfo={companyInfo} setActiveTab={handleTabChange} />
+      {activeTab !== 'landing' && (
+        <Footer companyInfo={companyInfo} setActiveTab={handleTabChange} />
+      )}
 
       {/* Course Detail Modal */}
       {detailCourse && (
