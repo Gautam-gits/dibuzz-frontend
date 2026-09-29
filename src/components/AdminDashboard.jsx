@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import {
-  LayoutDashboard, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
-  X, RefreshCw, Database, Zap, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus
+  LayoutDashboard, Award, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
+  X, RefreshCw, Database, Zap, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
+import { CertificateManager } from './CertificateManager';
 /* ─── Toast ─────────────────────────────────────────────────── */
 function Toast({ toasts, remove }) {
   if (!toasts.length) return null;
@@ -13,11 +13,11 @@ function Toast({ toasts, remove }) {
       {toasts.map(t => (
         <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-sm font-semibold backdrop-blur-md
           ${t.type === 'success' ? 'bg-emerald-50 border-emerald-500/50 text-emerald-800' :
-            t.type === 'error'   ? 'bg-red-50 border-red-500/50 text-red-800' :
-            t.type === 'warn'    ? 'bg-amber-50 border-amber-500/50 text-amber-800' :
-                                   'bg-violet-50 border-violet-500/50 text-violet-800'}`}>
+            t.type === 'error' ? 'bg-red-50 border-red-500/50 text-red-800' :
+              t.type === 'warn' ? 'bg-amber-50 border-amber-500/50 text-amber-800' :
+                'bg-violet-50 border-violet-500/50 text-violet-800'}`}>
           {t.type === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0" />}
-          {t.type === 'error'   && <AlertCircle  className="w-4 h-4 shrink-0" />}
+          {t.type === 'error' && <AlertCircle className="w-4 h-4 shrink-0" />}
           {(t.type === 'info' || t.type === 'warn') && <Zap className="w-4 h-4 shrink-0" />}
           <span className="flex-1">{t.message}</span>
           <button onClick={() => remove(t.id)} className="ml-2 opacity-60 hover:opacity-100 cursor-pointer">
@@ -68,9 +68,9 @@ function Confirm({ msg, onOk, onCancel }) {
 function StatCard({ label, value, sub, icon: Icon, color, loading }) {
   const C = {
     emerald: { border: 'border-emerald-200', icon: 'text-emerald-500', val: 'text-slate-900', sub: 'text-emerald-600' },
-    violet:  { border: 'border-violet-200',  icon: 'text-violet-500',  val: 'text-slate-900', sub: 'text-violet-600'  },
-    indigo:  { border: 'border-indigo-200',  icon: 'text-indigo-500',  val: 'text-slate-900', sub: 'text-indigo-600'  },
-    amber:   { border: 'border-amber-200',   icon: 'text-amber-500',   val: 'text-slate-900', sub: 'text-amber-600'   },
+    violet: { border: 'border-violet-200', icon: 'text-violet-500', val: 'text-slate-900', sub: 'text-violet-600' },
+    indigo: { border: 'border-indigo-200', icon: 'text-indigo-500', val: 'text-slate-900', sub: 'text-indigo-600' },
+    amber: { border: 'border-amber-200', icon: 'text-amber-500', val: 'text-slate-900', sub: 'text-amber-600' },
   }[color] || {};
   return (
     <div className={`bg-white border ${C.border} p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 space-y-2`}>
@@ -113,7 +113,7 @@ function Modal({ title, icon: Icon, iconColor, onClose, children }) {
           <h3 className="text-lg font-black text-slate-900">{title}</h3>
         </div>
         <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-            {children}
+          {children}
         </div>
       </div>
     </div>
@@ -130,12 +130,12 @@ export function AdminDashboard({
   transactions = [], setTransactions,
   faqs = [], setFaqs,
   companyInfo = {}
-, refreshData}) {
+  , refreshData }) {
   const { toasts, add, remove } = useToast();
-  const [tab,     setTab]     = useState('overview');
-  const [sem,     setSem]     = useState('All');
-  const [busy,    setBusy]    = useState(false);
-  const [db,      setDb]      = useState('online');
+  const [tab, setTab] = useState('overview');
+  const [sem, setSem] = useState('All');
+  const [busy, setBusy] = useState(false);
+  const [db, setDb] = useState('online');
   const [confirm, setConfirm] = useState(null);
 
   /* modal states */
@@ -143,9 +143,9 @@ export function AdminDashboard({
   const [showAddCrs, setShowAddCrs] = useState(false);
   const [showAddUsr, setShowAddUsr] = useState(false);
   const [showAddFaq, setShowAddFaq] = useState(false);
-  const [editInt,    setEditInt]    = useState(null);
-  const [editCrs,    setEditCrs]    = useState(null);
-  const [editFaq,    setEditFaq]    = useState(null);
+  const [editInt, setEditInt] = useState(null);
+  const [editCrs, setEditCrs] = useState(null);
+  const [editFaq, setEditFaq] = useState(null);
 
   /* add-internship form */
   const blankInt = { title: '', company: '', type: '', stipend: '', mode: '', duration: '', openings: '', badge: '', description: '', image: '', skills: '' };
@@ -165,9 +165,9 @@ export function AdminDashboard({
 
   /* derived */
   const totalRevenue = transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const adminCount   = users.filter(u => u.role === 'admin' || u.email === 'mananjayprasad7@gmail.com').length;
+  const adminCount = users.filter(u => u.role === 'admin' || u.email === 'mananjayprasad7@gmail.com').length;
   const filteredInts = internships.filter(i => {
-    if (sem === 'All')     return true;
+    if (sem === 'All') return true;
     if (sem === '3rd Sem') return i.badge?.includes('3rd');
     if (sem === '5th Sem') return i.badge?.includes('5th');
     if (sem === '7th Sem') return i.badge?.includes('7th');
@@ -336,12 +336,13 @@ export function AdminDashboard({
   });
 
   const TABS = [
-    { id: 'overview',    label: 'Overview',    icon: LayoutDashboard },
-    { id: 'internships', label: 'Internships', icon: Briefcase       },
-    { id: 'courses',     label: 'Courses',     icon: BookOpen        },
-    { id: 'users',       label: 'Users',       icon: Users           },
-    { id: 'revenue',     label: 'Revenue',     icon: IndianRupee     },
-    { id: 'faqs',        label: 'FAQs',        icon: HelpCircle      },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'internships', label: 'Internships', icon: Briefcase },
+    { id: 'courses', label: 'Courses', icon: BookOpen },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'revenue', label: 'Revenue', icon: IndianRupee },
+    { id: 'faqs', label: 'FAQs', icon: HelpCircle },
+    { id: 'certificates', label: 'Certificates', icon: Award },
   ];
 
   return (
@@ -375,7 +376,7 @@ export function AdminDashboard({
               </div>
 
               <div className="flex items-center gap-2">
-                <a href="https://supabase.com/dashboard/project/ztccsmsmjkzhtyfklkyl/editor" target="_blank" rel="noopener noreferrer" 
+                <a href="https://supabase.com/dashboard/project/ztccsmsmjkzhtyfklkyl/editor" target="_blank" rel="noopener noreferrer"
                   className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-[10px] font-bold text-emerald-700 transition-all cursor-pointer shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <Database className="w-3 h-3" />
@@ -393,11 +394,10 @@ export function AdminDashboard({
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-0">
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-b-2 ${
-                    tab === t.id
+                  className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-b-2 ${tab === t.id
                       ? 'text-violet-700 border-violet-600 bg-violet-50'
                       : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-50'
-                  }`}>
+                    }`}>
                   <t.icon className="w-4 h-4" />
                   {t.label}
                 </button>
@@ -424,26 +424,26 @@ export function AdminDashboard({
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Platform Revenue" value={`₹${totalRevenue.toLocaleString('en-IN')}`} sub={`${transactions.length} transactions`} icon={IndianRupee} color="emerald" loading={busy} />
-                <StatCard label="Internships"      value={internships.length || 0}  sub="Active Programs"     icon={Briefcase}    color="violet" loading={busy} />
-                <StatCard label="Courses"           value={courses.length}            sub="Active Tracks"           icon={BookOpen}     color="indigo" loading={busy} />
-                <StatCard label="Users"             value={users.length}              sub={`Admins: ${adminCount}`} icon={Users}        color="amber"  loading={busy} />
+                <StatCard label="Internships" value={internships.length || 0} sub="Active Programs" icon={Briefcase} color="violet" loading={busy} />
+                <StatCard label="Courses" value={courses.length} sub="Active Tracks" icon={BookOpen} color="indigo" loading={busy} />
+                <StatCard label="Users" value={users.length} sub={`Admins: ${adminCount}`} icon={Users} color="amber" loading={busy} />
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                 <button onClick={() => { setShowAddInt(true); setTab('internships'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
-                  <div className="p-2 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <div className="p-2 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
                   <span className="font-bold text-slate-800">Add Internship</span>
                 </button>
                 <button onClick={() => { setShowAddCrs(true); setTab('courses'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
-                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
                   <span className="font-bold text-slate-800">Add Course</span>
                 </button>
                 <button onClick={() => { setShowAddUsr(true); setTab('users'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
-                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors"><UserPlus className="w-5 h-5"/></div>
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors"><UserPlus className="w-5 h-5" /></div>
                   <span className="font-bold text-slate-800">Add User</span>
                 </button>
                 <button onClick={() => { setShowAddFaq(true); setTab('faqs'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
-                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5"/></div>
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
                   <span className="font-bold text-slate-800">Add FAQ</span>
                 </button>
               </div>
@@ -458,9 +458,8 @@ export function AdminDashboard({
                   <Filter className="w-4 h-4 text-slate-400" />
                   {['All', '3rd Sem', '5th Sem', '7th Sem'].map(f => (
                     <button key={f} onClick={() => setSem(f)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        sem === f ? 'bg-violet-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                      }`}>{f}</button>
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${sem === f ? 'bg-violet-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}>{f}</button>
                   ))}
                   <span className="text-xs text-slate-500 font-mono font-medium">{filteredInts.length} items</span>
                 </div>
@@ -541,7 +540,7 @@ export function AdminDashboard({
                       </div>
                       <h4 className="font-bold text-slate-900 text-sm mb-2">{c.title}</h4>
                       <p className="text-xs text-slate-500 line-clamp-3 mb-4">{c.description}</p>
-                      
+
                     </div>
                     <div className="flex gap-2 p-3 bg-slate-50 border-t border-slate-100">
                       <button onClick={() => setEditCrs({ ...c, originalPrice: c.originalPrice || c.original_price })}
@@ -586,9 +585,8 @@ export function AdminDashboard({
                           <td className="px-4 py-3 font-bold text-slate-900">{u.name}</td>
                           <td className="px-4 py-3 text-slate-600 font-medium">{u.email}</td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                              u.role === 'admin' ? 'bg-violet-100 text-violet-700 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}>{u.role || 'student'}</span>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${u.role === 'admin' ? 'bg-violet-100 text-violet-700 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}>{u.role || 'student'}</span>
                           </td>
                           <td className="px-4 py-3 text-slate-500">{u.joinedDate || u.joined_date || '—'}</td>
                           <td className="px-4 py-3">
@@ -604,7 +602,9 @@ export function AdminDashboard({
               </div>
             </div>
           )}
-
+          {tab === 'certificates' && (
+            <CertificateManager />
+          )}
           {/* ── FAQS ── */}
           {tab === 'faqs' && (
             <div className="space-y-6">
@@ -618,17 +618,17 @@ export function AdminDashboard({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {faqs.map(faq => (
                   <div key={faq.id} className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-                     <div className="flex justify-between items-start gap-3">
-                        <div>
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200 font-bold mb-2 inline-block">{faq.category}</span>
-                          <h4 className="font-bold text-slate-900 text-sm mb-1">{faq.question}</h4>
-                          <p className="text-xs text-slate-600">{faq.answer}</p>
-                        </div>
-                        <div className="flex flex-col gap-2 shrink-0">
-                           <button onClick={() => setEditFaq(faq)} className="p-1.5 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5" /></button>
-                           <button onClick={() => delFaq(faq.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                     </div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200 font-bold mb-2 inline-block">{faq.category}</span>
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">{faq.question}</h4>
+                        <p className="text-xs text-slate-600">{faq.answer}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button onClick={() => setEditFaq(faq)} className="p-1.5 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => delFaq(faq.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -638,7 +638,7 @@ export function AdminDashboard({
           {/* ── REVENUE ── */}
           {tab === 'revenue' && (
             <div className="space-y-6">
-               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs min-w-[600px]">
                     <thead>
@@ -676,46 +676,46 @@ export function AdminDashboard({
           <form onSubmit={editInt ? (e) => { e.preventDefault(); saveInt(); } : addInt} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Program Title *">
-                <input required type="text" placeholder="e.g. Web Dev" value={editInt ? editInt.title : iForm.title} onChange={e => editInt ? setEditInt(p => ({...p, title: e.target.value})) : setIForm(p => ({ ...p, title: e.target.value }))} className={INP} />
+                <input required type="text" placeholder="e.g. Web Dev" value={editInt ? editInt.title : iForm.title} onChange={e => editInt ? setEditInt(p => ({ ...p, title: e.target.value })) : setIForm(p => ({ ...p, title: e.target.value }))} className={INP} />
               </Field>
               <Field label="Company">
-    <input type="text" value={editInt ? editInt.company : iForm.company} onChange={e => editInt ? setEditInt(p => ({...p, company: e.target.value})) : setIForm(p => ({ ...p, company: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Mode">
-    <input type="text" value={editInt ? editInt.mode : iForm.mode} onChange={e => editInt ? setEditInt(p => ({...p, mode: e.target.value})) : setIForm(p => ({ ...p, mode: e.target.value }))} className={INP} />
-  </Field>
-  <div>
+                <input type="text" value={editInt ? editInt.company : iForm.company} onChange={e => editInt ? setEditInt(p => ({ ...p, company: e.target.value })) : setIForm(p => ({ ...p, company: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Mode">
+                <input type="text" value={editInt ? editInt.mode : iForm.mode} onChange={e => editInt ? setEditInt(p => ({ ...p, mode: e.target.value })) : setIForm(p => ({ ...p, mode: e.target.value }))} className={INP} />
+              </Field>
+              <div>
                 <label className={LBL}>Stipend / Fee</label>
-                <input type="text" placeholder="e.g. Coming Soon or Free" value={editInt ? editInt.stipend : iForm.stipend} onChange={e => editInt ? setEditInt(p => ({...p, stipend: e.target.value})) : setIForm(p => ({ ...p, stipend: e.target.value }))} className={INP} />
+                <input type="text" placeholder="e.g. Coming Soon or Free" value={editInt ? editInt.stipend : iForm.stipend} onChange={e => editInt ? setEditInt(p => ({ ...p, stipend: e.target.value })) : setIForm(p => ({ ...p, stipend: e.target.value }))} className={INP} />
               </div>
             </div>
             <Field label="Image URL">
               <div className="relative">
-                 <ImageIcon className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
-                 <input type="text" placeholder="https://image-url..." value={editInt ? (editInt.image || '') : iForm.image} onChange={e => editInt ? setEditInt(p => ({...p, image: e.target.value})) : setIForm(p => ({...p, image: e.target.value}))} className={INP + " pl-9"} />
+                <ImageIcon className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
+                <input type="text" placeholder="https://image-url..." value={editInt ? (editInt.image || '') : iForm.image} onChange={e => editInt ? setEditInt(p => ({ ...p, image: e.target.value })) : setIForm(p => ({ ...p, image: e.target.value }))} className={INP + " pl-9"} />
               </div>
             </Field>
             <div className="grid grid-cols-2 gap-3">
-               <Field label="Type">
-     <input type="text" placeholder="e.g. 3rd Semester Training" value={editInt ? editInt.type : iForm.type} onChange={e => editInt ? setEditInt(p => ({...p, type: e.target.value})) : setIForm(p => ({ ...p, type: e.target.value }))} className={INP} />
-   </Field>
-   <Field label="Openings">
-     <input type="number" value={editInt ? editInt.openings : iForm.openings} onChange={e => editInt ? setEditInt(p => ({...p, openings: e.target.value})) : setIForm(p => ({ ...p, openings: e.target.value }))} className={INP} />
-   </Field>
-   <Field label="Duration">
-                 <input type="text" value={editInt ? editInt.duration : iForm.duration} onChange={e => editInt ? setEditInt(p => ({...p, duration: e.target.value})) : setIForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
-               </Field>
-               <Field label="Semester Badge">
-                 <select value={editInt ? editInt.badge : iForm.badge} onChange={e => editInt ? setEditInt(p => ({...p, badge: e.target.value})) : setIForm(p => ({ ...p, badge: e.target.value }))} className={INP}>
-                   <option>3rd Sem</option><option>5th Sem</option><option>7th Sem</option>
-                 </select>
-               </Field>
+              <Field label="Type">
+                <input type="text" placeholder="e.g. 3rd Semester Training" value={editInt ? editInt.type : iForm.type} onChange={e => editInt ? setEditInt(p => ({ ...p, type: e.target.value })) : setIForm(p => ({ ...p, type: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Openings">
+                <input type="number" value={editInt ? editInt.openings : iForm.openings} onChange={e => editInt ? setEditInt(p => ({ ...p, openings: e.target.value })) : setIForm(p => ({ ...p, openings: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Duration">
+                <input type="text" value={editInt ? editInt.duration : iForm.duration} onChange={e => editInt ? setEditInt(p => ({ ...p, duration: e.target.value })) : setIForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Semester Badge">
+                <select value={editInt ? editInt.badge : iForm.badge} onChange={e => editInt ? setEditInt(p => ({ ...p, badge: e.target.value })) : setIForm(p => ({ ...p, badge: e.target.value }))} className={INP}>
+                  <option>3rd Sem</option><option>5th Sem</option><option>7th Sem</option>
+                </select>
+              </Field>
             </div>
             <Field label="Skills (comma separated)">
-              <input type="text" placeholder="React, Node, Express" value={editInt ? (Array.isArray(editInt.skills) ? editInt.skills.join(', ') : editInt.skills) : iForm.skills} onChange={e => editInt ? setEditInt(p => ({...p, skills: e.target.value})) : setIForm(p => ({ ...p, skills: e.target.value }))} className={INP} />
+              <input type="text" placeholder="React, Node, Express" value={editInt ? (Array.isArray(editInt.skills) ? editInt.skills.join(', ') : editInt.skills) : iForm.skills} onChange={e => editInt ? setEditInt(p => ({ ...p, skills: e.target.value })) : setIForm(p => ({ ...p, skills: e.target.value }))} className={INP} />
             </Field>
             <Field label="Description">
-              <textarea rows={3} placeholder="Program overview..." value={editInt ? editInt.description : iForm.description} onChange={e => editInt ? setEditInt(p => ({...p, description: e.target.value})) : setIForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
+              <textarea rows={3} placeholder="Program overview..." value={editInt ? editInt.description : iForm.description} onChange={e => editInt ? setEditInt(p => ({ ...p, description: e.target.value })) : setIForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
             </Field>
             <button type="submit" disabled={busy}
               className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50 mt-2">
@@ -731,43 +731,43 @@ export function AdminDashboard({
           <form onSubmit={editCrs ? (e) => { e.preventDefault(); saveCrs(); } : addCrs} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Course Title *">
-                <input required type="text" value={editCrs ? editCrs.title : cForm.title} onChange={e => editCrs ? setEditCrs(p => ({...p, title: e.target.value})) : setCForm(p => ({ ...p, title: e.target.value }))} className={INP} />
+                <input required type="text" value={editCrs ? editCrs.title : cForm.title} onChange={e => editCrs ? setEditCrs(p => ({ ...p, title: e.target.value })) : setCForm(p => ({ ...p, title: e.target.value }))} className={INP} />
               </Field>
               <Field label="Category">
-                <input type="text" value={editCrs ? editCrs.category : cForm.category} onChange={e => editCrs ? setEditCrs(p => ({...p, category: e.target.value})) : setCForm(p => ({ ...p, category: e.target.value }))} className={INP} />
+                <input type="text" value={editCrs ? editCrs.category : cForm.category} onChange={e => editCrs ? setEditCrs(p => ({ ...p, category: e.target.value })) : setCForm(p => ({ ...p, category: e.target.value }))} className={INP} />
               </Field>
             </div>
             <Field label="Image URL">
-              <input type="text" value={editCrs ? editCrs.image : cForm.image} onChange={e => editCrs ? setEditCrs(p => ({...p, image: e.target.value})) : setCForm(p => ({...p, image: e.target.value}))} className={INP} />
+              <input type="text" value={editCrs ? editCrs.image : cForm.image} onChange={e => editCrs ? setEditCrs(p => ({ ...p, image: e.target.value })) : setCForm(p => ({ ...p, image: e.target.value }))} className={INP} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Duration">
-    <input type="text" placeholder="e.g. 12 Weeks" value={editCrs ? editCrs.duration : cForm.duration} onChange={e => editCrs ? setEditCrs(p => ({...p, duration: e.target.value})) : setCForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Badge">
-    <input type="text" placeholder="e.g. New" value={editCrs ? editCrs.badge : cForm.badge} onChange={e => editCrs ? setEditCrs(p => ({...p, badge: e.target.value})) : setCForm(p => ({ ...p, badge: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Level">
-    <input type="text" placeholder="e.g. All Levels" value={editCrs ? editCrs.level : cForm.level} onChange={e => editCrs ? setEditCrs(p => ({...p, level: e.target.value})) : setCForm(p => ({ ...p, level: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Price (₹)">
-                <input type="number" value={editCrs ? editCrs.price : cForm.price} onChange={e => editCrs ? setEditCrs(p => ({...p, price: e.target.value})) : setCForm(p => ({ ...p, price: e.target.value }))} className={INP} />
+                <input type="text" placeholder="e.g. 12 Weeks" value={editCrs ? editCrs.duration : cForm.duration} onChange={e => editCrs ? setEditCrs(p => ({ ...p, duration: e.target.value })) : setCForm(p => ({ ...p, duration: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Badge">
+                <input type="text" placeholder="e.g. New" value={editCrs ? editCrs.badge : cForm.badge} onChange={e => editCrs ? setEditCrs(p => ({ ...p, badge: e.target.value })) : setCForm(p => ({ ...p, badge: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Level">
+                <input type="text" placeholder="e.g. All Levels" value={editCrs ? editCrs.level : cForm.level} onChange={e => editCrs ? setEditCrs(p => ({ ...p, level: e.target.value })) : setCForm(p => ({ ...p, level: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Price (₹)">
+                <input type="number" value={editCrs ? editCrs.price : cForm.price} onChange={e => editCrs ? setEditCrs(p => ({ ...p, price: e.target.value })) : setCForm(p => ({ ...p, price: e.target.value }))} className={INP} />
               </Field>
               <Field label="Original Price (₹)">
-    <input type="number" value={editCrs ? (editCrs.originalPrice || editCrs.original_price) : cForm.originalPrice} onChange={e => editCrs ? setEditCrs(p => ({...p, originalPrice: e.target.value})) : setCForm(p => ({ ...p, originalPrice: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Rating (0-5)">
-    <input type="number" step="0.1" value={editCrs ? editCrs.rating : cForm.rating} onChange={e => editCrs ? setEditCrs(p => ({...p, rating: e.target.value})) : setCForm(p => ({ ...p, rating: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Students Count">
-    <input type="number" value={editCrs ? (editCrs.studentsCount || editCrs.students_count) : cForm.studentsCount} onChange={e => editCrs ? setEditCrs(p => ({...p, studentsCount: e.target.value})) : setCForm(p => ({ ...p, studentsCount: e.target.value }))} className={INP} />
-  </Field>
-  <Field label="Reviews Count">
-    <input type="number" value={editCrs ? (editCrs.reviewsCount || editCrs.reviews_count) : cForm.reviewsCount} onChange={e => editCrs ? setEditCrs(p => ({...p, reviewsCount: e.target.value})) : setCForm(p => ({ ...p, reviewsCount: e.target.value }))} className={INP} />
-  </Field>
+                <input type="number" value={editCrs ? (editCrs.originalPrice || editCrs.original_price) : cForm.originalPrice} onChange={e => editCrs ? setEditCrs(p => ({ ...p, originalPrice: e.target.value })) : setCForm(p => ({ ...p, originalPrice: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Rating (0-5)">
+                <input type="number" step="0.1" value={editCrs ? editCrs.rating : cForm.rating} onChange={e => editCrs ? setEditCrs(p => ({ ...p, rating: e.target.value })) : setCForm(p => ({ ...p, rating: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Students Count">
+                <input type="number" value={editCrs ? (editCrs.studentsCount || editCrs.students_count) : cForm.studentsCount} onChange={e => editCrs ? setEditCrs(p => ({ ...p, studentsCount: e.target.value })) : setCForm(p => ({ ...p, studentsCount: e.target.value }))} className={INP} />
+              </Field>
+              <Field label="Reviews Count">
+                <input type="number" value={editCrs ? (editCrs.reviewsCount || editCrs.reviews_count) : cForm.reviewsCount} onChange={e => editCrs ? setEditCrs(p => ({ ...p, reviewsCount: e.target.value })) : setCForm(p => ({ ...p, reviewsCount: e.target.value }))} className={INP} />
+              </Field>
             </div>
             <Field label="Description">
-              <textarea rows={3} value={editCrs ? editCrs.description : cForm.description} onChange={e => editCrs ? setEditCrs(p => ({...p, description: e.target.value})) : setCForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
+              <textarea rows={3} value={editCrs ? editCrs.description : cForm.description} onChange={e => editCrs ? setEditCrs(p => ({ ...p, description: e.target.value })) : setCForm(p => ({ ...p, description: e.target.value }))} className={INP + ' resize-none'} />
             </Field>
             <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
               {busy ? 'Saving...' : 'Save Course'}
@@ -779,29 +779,29 @@ export function AdminDashboard({
       {/* Add User */}
       {showAddUsr && (
         <Modal title="Add User" icon={UserPlus} iconColor="bg-amber-50 text-amber-600 border-amber-200" onClose={() => setShowAddUsr(false)}>
-           <form onSubmit={addUser} className="space-y-4">
-              <Field label="Full Name *">
-                <input required type="text" value={uForm.name} onChange={e => setUForm(p => ({...p, name: e.target.value}))} className={INP} />
-              </Field>
-              <Field label="Email Address *">
-                <input required type="email" value={uForm.email} onChange={e => setUForm(p => ({...p, email: e.target.value}))} className={INP} />
-              </Field>
-              <Field label="Phone">
-                <input type="text" value={uForm.phone} onChange={e => setUForm(p => ({...p, phone: e.target.value}))} className={INP} />
-              </Field>
-              <Field label="Password (Optional)">
-                <input type="text" placeholder="Leave empty for generic student" value={uForm.password} onChange={e => setUForm(p => ({...p, password: e.target.value}))} className={INP} />
-              </Field>
-              <Field label="Role">
-                <select value={uForm.role} onChange={e => setUForm(p => ({...p, role: e.target.value}))} className={INP}>
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </Field>
-              <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
-                Create User
-              </button>
-           </form>
+          <form onSubmit={addUser} className="space-y-4">
+            <Field label="Full Name *">
+              <input required type="text" value={uForm.name} onChange={e => setUForm(p => ({ ...p, name: e.target.value }))} className={INP} />
+            </Field>
+            <Field label="Email Address *">
+              <input required type="email" value={uForm.email} onChange={e => setUForm(p => ({ ...p, email: e.target.value }))} className={INP} />
+            </Field>
+            <Field label="Phone">
+              <input type="text" value={uForm.phone} onChange={e => setUForm(p => ({ ...p, phone: e.target.value }))} className={INP} />
+            </Field>
+            <Field label="Password (Optional)">
+              <input type="text" placeholder="Leave empty for generic student" value={uForm.password} onChange={e => setUForm(p => ({ ...p, password: e.target.value }))} className={INP} />
+            </Field>
+            <Field label="Role">
+              <select value={uForm.role} onChange={e => setUForm(p => ({ ...p, role: e.target.value }))} className={INP}>
+                <option value="student">Student</option>
+                <option value="admin">Admin</option>
+              </select>
+            </Field>
+            <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
+              Create User
+            </button>
+          </form>
         </Modal>
       )}
 
@@ -810,13 +810,13 @@ export function AdminDashboard({
         <Modal title={editFaq ? "Edit FAQ" : "Add FAQ"} icon={HelpCircle} iconColor="bg-emerald-50 text-emerald-600 border-emerald-200" onClose={() => { setShowAddFaq(false); setEditFaq(null); }}>
           <form onSubmit={editFaq ? (e) => { e.preventDefault(); saveFaq(); } : addFaq} className="space-y-4">
             <Field label="Question *">
-              <input required type="text" value={editFaq ? editFaq.question : fForm.question} onChange={e => editFaq ? setEditFaq(p => ({...p, question: e.target.value})) : setFForm(p => ({...p, question: e.target.value}))} className={INP} />
+              <input required type="text" value={editFaq ? editFaq.question : fForm.question} onChange={e => editFaq ? setEditFaq(p => ({ ...p, question: e.target.value })) : setFForm(p => ({ ...p, question: e.target.value }))} className={INP} />
             </Field>
             <Field label="Answer *">
-              <textarea required rows={4} value={editFaq ? editFaq.answer : fForm.answer} onChange={e => editFaq ? setEditFaq(p => ({...p, answer: e.target.value})) : setFForm(p => ({...p, answer: e.target.value}))} className={INP + ' resize-none'} />
+              <textarea required rows={4} value={editFaq ? editFaq.answer : fForm.answer} onChange={e => editFaq ? setEditFaq(p => ({ ...p, answer: e.target.value })) : setFForm(p => ({ ...p, answer: e.target.value }))} className={INP + ' resize-none'} />
             </Field>
             <Field label="Category">
-              <input type="text" value={editFaq ? editFaq.category : fForm.category} onChange={e => editFaq ? setEditFaq(p => ({...p, category: e.target.value})) : setFForm(p => ({...p, category: e.target.value}))} className={INP} />
+              <input type="text" value={editFaq ? editFaq.category : fForm.category} onChange={e => editFaq ? setEditFaq(p => ({ ...p, category: e.target.value })) : setFForm(p => ({ ...p, category: e.target.value }))} className={INP} />
             </Field>
             <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
               {busy ? 'Saving...' : 'Save FAQ'}

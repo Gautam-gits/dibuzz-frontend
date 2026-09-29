@@ -14,7 +14,7 @@ import { InternshipSection } from './components/InternshipSection';
 import { HomeSections } from './components/HomeSections';
 import { LandingPage } from './components/LandingPage';
 
-import { supabase, SUPABASE_SQL_SETUP } from './lib/supabase';
+import { supabase } from './lib/supabase';
 import {
   INITIAL_COMPANY_INFO,
   INITIAL_COURSES,
@@ -64,14 +64,7 @@ export default function App() {
     }
   });
 
-  const [users, setUsers] = useState(() => {
-    try {
-      localStorage.removeItem('dibuzz_users');
-      return INITIAL_USERS;
-    } catch (e) {
-      return INITIAL_USERS;
-    }
-  });
+  const [users, setUsers] = useState([]);
 
   const [verifiedCertificates, setVerifiedCertificates] = useState(() => {
     try {
@@ -100,14 +93,7 @@ export default function App() {
     }
   });
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dibuzz_current_user');
-      return saved ? JSON.parse(saved) : INITIAL_USERS[0];
-    } catch (e) {
-      return INITIAL_USERS[0];
-    }
-  });
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [dbStatus, setDbStatus] = useState('CONNECTING'); // 'CONNECTED' | 'FALLBACK'
 
@@ -123,7 +109,21 @@ export default function App() {
   const [showSqlModal, setShowSqlModal] = useState(false);
 
   // History & Navigation State Management (Fixes Browser & Mobile Back Button)
-  const handleTabChange = (tabName) => {
+    const handleTabChange = (tabName) => {
+    if (tabName === 'admin' && currentUser?.role !== 'admin') {
+      if (!currentUser) {
+        setAuthModal({ isOpen: true, mode: 'login' });
+      } else {
+        setActiveTab('dashboard');
+      }
+      return;
+    }
+
+    if (tabName === 'dashboard' && !currentUser) {
+      setAuthModal({ isOpen: true, mode: 'login' });
+      return;
+    }
+
     if (activeTab !== tabName) {
       window.history.pushState({ tab: tabName }, '', `#${tabName}`);
       setActiveTab(tabName);
@@ -299,137 +299,193 @@ export default function App() {
     localStorage.setItem('dibuzz_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
-  // Auth Handlers
-  const handleLogin = async (email, password) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = password.trim();
+     const mapProfileToUser = (profile) => ({
+    id: profile.id,
+    name: profile.full_name || 'Student',
+    email: profile.email,
+    phone: profile.phone || '',
+    role: profile.role || 'student',
+    joinedDate: profile.joined_date
+      ? new Date(profile.joined_date).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      : '',
+    collegeRegNo: profile.college_reg_no || '',
+    collegeName: profile.college_name || '',
+    course: profile.course || '',
+    branch: profile.branch || '',
+    profileImage: profile.profile_image || null,
+    enrolledCourses: profile.enrolled_courses || [],
+    certificates: profile.certificates || []
+  });
 
-    try {
-      // 1. Try DB first
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', cleanEmail)
-        .eq('password', cleanPass);
-        
-      if (!error && data && data.length > 0) {
-        const found = {
-          id: data[0].id,
-          name: data[0].name,
-          email: data[0].email,
-          phone: data[0].phone,
-          password: data[0].password,
-          role: data[0].role || 'student',
-          joinedDate: data[0].joined_date,
-          collegeRegNo: data[0].college_reg_no,
-          collegeName: data[0].college_name,
-          course: data[0].course,
-          branch: data[0].branch,
-          profileImage: data[0].profile_image,
-          enrolledCourses: data[0].enrolled_courses || [],
-          certificates: data[0].certificates || []
-        };
-        
-        setCurrentUser(found);
-        setAuthModal({ isOpen: false, mode: 'login' });
-        setActiveTab(found.role === 'admin' ? 'admin' : 'dashboard');
-        
-        // Ensure user is in local users state if not admin
-        if (!users.find(u => u.email === found.email)) {
-          setUsers(prev => [found, ...prev]);
-        }
-        return true;
-      }
-    } catch (err) {
-      console.error('Supabase login check failed:', err);
+  const loadSignedInUser = async (authUser) => {
+    if (!authUser) {
+      setCurrentUser(null);
+      return null;
     }
 
-    // 2. Check users in current state (fallback)
-    let found = users.find(
-      u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
-    );
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
 
-    // 3. Fallback check in INITIAL_USERS list
-    if (!found) {
-      found = INITIAL_USERS.find(
-        u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
-      );
-      if (found) {
-        setUsers(prev => [found, ...prev.filter(x => x.email.toLowerCase() !== cleanEmail)]);
-      }
+    if (error || !profile) {
+      console.error('Unable to load profile:', error);
+      setCurrentUser(null);
+      return null;
     }
 
-    if (found) {
-      setCurrentUser(found);
-      setAuthModal({ isOpen: false, mode: 'login' });
-      if (found.role === 'admin') {
-        setActiveTab('home');
+    const user = mapProfileToUser({
+      ...profile,
+      email: authUser.email || profile.email
+    });
+
+    setCurrentUser(user);
+    setUsers((previousUsers) => [
+      user,
+      ...previousUsers.filter((item) => item.id !== user.id)
+    ]);
+
+    return user;
+  };
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session?.user) {
+        await loadSignedInUser(data.session.user);
       } else {
-        setActiveTab('dashboard');
+        setCurrentUser(null);
       }
-      return true;
+    };
+
+    restoreSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => {
+        loadSignedInUser(session?.user || null);
+      }, 0);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  
+  // Auth Handlers
+    const handleLogin = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password
+    });
+
+    if (error || !data.user) {
+      return {
+        success: false,
+        message: error?.message || 'Invalid email or password.'
+      };
     }
-    return false;
+
+    const user = await loadSignedInUser(data.user);
+
+    if (!user) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        message: 'Your profile could not be loaded. Please contact support.'
+      };
+    }
+
+    setAuthModal({ isOpen: false, mode: 'login' });
+    setActiveTab(user.role === 'admin' ? 'admin' : 'dashboard');
+
+    return { success: true };
   };
 
   const handleRegister = async (userData) => {
-    const newUser = {
-      id: Date.now(),
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      phone: userData.phone,
-      role: 'student',
-      joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      collegeRegNo: userData.collegeRegNo,
-      collegeName: userData.collegeName,
-      course: userData.course,
-      branch: userData.branch,
-      profileImage: userData.profileImage,
-      enrolledCourses: [],
-      certificates: []
-    };
+    const cleanEmail = userData.email.trim().toLowerCase();
 
-    setUsers([newUser, ...users]);
-    setCurrentUser(newUser);
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: userData.password,
+      options: {
+        data: {
+          full_name: userData.name
+        }
+      }
+    });
+
+    if (error || !data.user) {
+      return {
+        success: false,
+        message: error?.message || 'Account could not be created.'
+      };
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        full_name: userData.name,
+        phone: userData.phone,
+        college_reg_no: userData.collegeRegNo,
+        college_name: userData.collegeName,
+        course: userData.course,
+        branch: userData.branch,
+        profile_image: userData.profileImage || null
+      })
+      .eq('id', data.user.id);
+
+    if (profileError) {
+      return {
+        success: false,
+        message: 'Account was created, but profile details could not be saved.'
+      };
+    }
+
+    if (!data.session) {
+      return {
+        success: false,
+        message: 'Account created. Please confirm your email, then sign in.'
+      };
+    }
+
+    const user = await loadSignedInUser(data.user);
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Account created, but profile could not be loaded. Please sign in again.'
+      };
+    }
+
     setAuthModal({ isOpen: false, mode: 'login' });
     setActiveTab('dashboard');
 
-    try {
-      await supabase.from('profiles').insert([{
-        name: newUser.name,
-        email: newUser.email,
-        password: newUser.password,
-        phone: newUser.phone,
-        role: 'student',
-        joined_date: newUser.joinedDate,
-        college_reg_no: newUser.collegeRegNo,
-        college_name: newUser.collegeName,
-        course: newUser.course,
-        branch: newUser.branch,
-        profile_image: newUser.profileImage,
-        enrolled_courses: [],
-        certificates: []
-      }]);
-    } catch (err) {
-      console.log('Supabase sync insert profile err:', err);
-    }
+    return { success: true };
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
+    setUsers([]);
+    localStorage.removeItem('dibuzz_current_user');
     setActiveTab('home');
   };
 
-  // Payment Enrollment Handler
-  const handleEnrollTrigger = (course) => {
+     const handleEnrollTrigger = (course) => {
     if (!currentUser) {
       setAuthModal({ isOpen: true, mode: 'login' });
       return;
     }
+
     setPaymentCourse(course);
   };
-
+  
   const handlePaymentSuccess = async (courseId, receiptData) => {
     const updatedUser = {
       ...currentUser,
@@ -771,7 +827,7 @@ export default function App() {
           <AboutSection companyInfo={companyInfo} />
         )}
 
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && currentUser && (
           <StudentDashboard
             currentUser={currentUser}
             courses={courses}
@@ -787,7 +843,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && currentUser?.role === 'admin' && (
           <AdminDashboard
             courses={courses}
             setCourses={setCourses}
