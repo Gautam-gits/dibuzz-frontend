@@ -11,12 +11,17 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { createCertificatePdf } from '../lib/certificatePdf';
+import { createCertificatePdf, preloadCertificateImages } from '../lib/certificatePdf';
 
 const initialForm = {
   studentId: '',
   programName: '',
-  certificateType: 'course'
+  certificateType: 'internship',
+  collegeName: '',
+  regRollNo: '',
+  startDate: '',
+  endDate: '',
+  grade: 'A'
 };
 
 const formatDate = (dateValue) => {
@@ -88,6 +93,11 @@ export function CertificateManager() {
       return;
     }
 
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      showMessage('End date cannot be before the start date.', 'error');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -106,6 +116,11 @@ export function CertificateManager() {
           student_name: selectedStudent.full_name || selectedStudent.email,
           program_name: form.programName.trim(),
           certificate_type: form.certificateType,
+          college_name: form.collegeName.trim(),
+          reg_roll_no: form.regRollNo.trim(),
+          start_date: form.startDate,
+          end_date: form.endDate,
+          grade: form.grade,
           issued_by: adminUser.id
         })
         .select()
@@ -113,12 +128,21 @@ export function CertificateManager() {
 
       if (createError) throw createError;
 
+      // Load MSME / ISO / MCA / logo images from /public so they appear in the PDF
+      const images = await preloadCertificateImages();
+
       const pdfBlob = createCertificatePdf({
         certificateNumber: certificate.certificate_number,
         studentName: certificate.student_name,
         programName: certificate.program_name,
+        collegeName: form.collegeName.trim(),
+        regRollNo: form.regRollNo.trim(),
+        startDate: form.startDate,
+        endDate: form.endDate,
+        grade: form.grade,
         certificateType: certificate.certificate_type,
-        issuedDate: certificate.issued_date
+        issuedDate: certificate.issued_date,
+        images
       });
 
       const filePath = `${selectedStudent.id}/${certificate.certificate_number}.pdf`;
@@ -140,11 +164,18 @@ export function CertificateManager() {
         .update({ file_path: filePath })
         .eq('id', certificate.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Roll back so we never keep a certificate row without a file path
+        await supabase.storage.from('certificates').remove([filePath]);
+        await supabase.from('certificates').delete().eq('id', certificate.id);
+        throw updateError;
+      }
 
       setForm(initialForm);
       setShowIssueModal(false);
-      showMessage(`Certificate ${certificate.certificate_number} issued successfully.`);
+      showMessage(
+        `Certificate ${certificate.certificate_number} issued to ${certificate.student_name}. It is now visible in their dashboard.`
+      );
       await loadData();
     } catch (error) {
       showMessage(error.message || 'Certificate could not be issued.', 'error');
@@ -179,7 +210,7 @@ export function CertificateManager() {
 
   const revokeCertificate = async (certificate) => {
     const confirmed = window.confirm(
-      `Revoke certificate ${certificate.certificate_number}? It will no longer show as valid.`
+      `Revoke certificate ${certificate.certificate_number}? It will no longer show as valid and the student will not be able to download it.`
     );
 
     if (!confirmed) return;
@@ -202,9 +233,9 @@ export function CertificateManager() {
     const text = search.toLowerCase();
 
     return (
-      certificate.student_name.toLowerCase().includes(text) ||
-      certificate.program_name.toLowerCase().includes(text) ||
-      certificate.certificate_number.toLowerCase().includes(text)
+      (certificate.student_name || '').toLowerCase().includes(text) ||
+      (certificate.program_name || '').toLowerCase().includes(text) ||
+      (certificate.certificate_number || '').toLowerCase().includes(text)
     );
   });
 
@@ -347,35 +378,37 @@ export function CertificateManager() {
       </div>
 
       {showIssueModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
           <form
             onSubmit={issueCertificate}
-            className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+            className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-5"
           >
-            <button
-              type="button"
-              onClick={() => setShowIssueModal(false)}
-              className="absolute right-4 top-4 rounded-full bg-slate-100 p-2 text-slate-500 hover:text-slate-900"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="sticky top-0 -mt-2 -mx-2 pt-2 pb-4 bg-white/95 backdrop-blur z-10 flex items-center justify-between border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-violet-50 p-2.5 text-violet-700">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Issue Certificate</h3>
+                  <p className="text-xs text-slate-500">
+                    The certificate will appear in the student's dashboard.
+                  </p>
+                </div>
+              </div>
 
-            <div className="mb-6 flex items-center gap-3">
-              <div className="rounded-xl bg-violet-50 p-2.5 text-violet-700">
-                <Award className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-black text-slate-900">Issue Certificate</h3>
-                <p className="text-xs text-slate-500">
-                  The PDF and verification record will be created together.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowIssueModal(false)}
+                className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700">
-                  Student
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Select Student <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -386,71 +419,141 @@ export function CertificateManager() {
                       studentId: event.target.value
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
                 >
-                  <option value="">Select a student</option>
+                  <option value="">Choose a student from list…</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.full_name || student.email} — {student.email}
+                      {student.full_name || student.email} ({student.email})
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700">
-                  Course / Internship Name
-                </label>
-                <input
-                  required
-                  value={form.programName}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      programName: event.target.value
-                    }))
-                  }
-                  placeholder="Example: Full Stack Web Development"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-violet-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Course / Domain Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    value={form.programName}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        programName: event.target.value
+                      }))
+                    }
+                    placeholder="e.g. Machine Learning"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Certificate Type
+                  </label>
+                  <select
+                    value={form.certificateType}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        certificateType: event.target.value
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  >
+                    <option value="internship">Internship Completion</option>
+                    <option value="course">Course Completion</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    College / Institute Name
+                  </label>
+                  <input
+                    required
+                    value={form.collegeName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, collegeName: e.target.value }))}
+                    placeholder="e.g. MIT Muzaffarpur"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Reg. / Roll No.
+                  </label>
+                  <input
+                    required
+                    value={form.regRollNo}
+                    onChange={(e) => setForm((prev) => ({ ...prev, regRollNo: e.target.value }))}
+                    placeholder="e.g. 24106107902"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">Start Date</label>
+                  <input
+                    required
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">End Date</label>
+                  <input
+                    required
+                    type="date"
+                    min={form.startDate || undefined}
+                    value={form.endDate}
+                    onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700">
-                  Certificate Type
-                </label>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">Grade Awarded</label>
                 <select
-                  value={form.certificateType}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      certificateType: event.target.value
-                    }))
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-500"
+                  value={form.grade}
+                  onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
                 >
-                  <option value="course">Course Completion</option>
-                  <option value="internship">Internship Completion</option>
+                  <option value="A+">Grade A+ (Outstanding)</option>
+                  <option value="A">Grade A (Excellent)</option>
+                  <option value="B+">Grade B+ (Very Good)</option>
+                  <option value="B">Grade B (Good)</option>
                 </select>
               </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60"
-              >
-                {submitting ? (
-                  <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                    Generating PDF…
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Generate & Issue Certificate
-                  </>
-                )}
-              </button>
+              <div className="pt-3">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-sm font-black text-white shadow-lg shadow-violet-200 hover:bg-violet-700 transition disabled:opacity-60"
+                >
+                  {submitting ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Generating Certificate PDF…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Generate & Issue Certificate
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>

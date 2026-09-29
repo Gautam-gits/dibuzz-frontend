@@ -1,16 +1,99 @@
-import React, { useState } from 'react';
-import { BookOpen, ShieldCheck, CreditCard, Award, LayoutDashboard, Compass, LogOut, ChevronRight, User, Settings, PlayCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  BookOpen, ShieldCheck, CreditCard, Award, LayoutDashboard, Compass,
+  PlayCircle, Download, LoaderCircle, RefreshCw
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { CourseExplorer } from './CourseExplorer';
 import { InternshipSection } from './InternshipSection';
 
+const formatDate = (dateValue) => {
+  if (!dateValue) return '—';
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
 export function StudentDashboard({ currentUser, courses, internships, userTransactions, verifiedCertificates, setActiveTab, companyInfo, onSelectCourse, onEnrollCourse, userEnrolledIds, onOpenAuthModal }) {
   const [dashboardTab, setDashboardTab] = useState('overview');
-  
+
+  // Certificates issued by the admin (loaded from Supabase)
+  const [certificates, setCertificates] = useState([]);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const userId = currentUser?.id;
+
+  const loadCertificates = useCallback(async () => {
+    if (!userId) return;
+
+    setCertLoading(true);
+    setCertError('');
+
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('student_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      setCertError(error.message);
+    } else {
+      setCertificates(data || []);
+    }
+
+    setCertLoading(false);
+  }, [userId]);
+
+  // Load once on login so the "Completed" count on Overview is correct
+  useEffect(() => {
+    loadCertificates();
+  }, [loadCertificates]);
+
+  // Refresh every time the student opens the Certificates tab
+  useEffect(() => {
+    if (dashboardTab === 'certificates') loadCertificates();
+  }, [dashboardTab, loadCertificates]);
+
+  const downloadCertificate = async (certificate) => {
+    if (!certificate.file_path) {
+      setCertError('PDF file is not available for this certificate yet.');
+      return;
+    }
+
+    setDownloadingId(certificate.id);
+    setCertError('');
+
+    const { data, error } = await supabase.storage
+      .from('certificates')
+      .createSignedUrl(certificate.file_path, 120, {
+        download: `${certificate.certificate_number}.pdf`
+      });
+
+    setDownloadingId(null);
+
+    if (error) {
+      setCertError(error.message);
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = data.signedUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
   if (!currentUser) return null;
 
   const enrolledCourseObjects = courses.filter(c => currentUser.enrolledCourses?.includes(c.id));
   const activeCourseCount = enrolledCourseObjects.length;
-  const completedCount = currentUser.certificates?.length || 0;
+  const completedCount = certificates.filter(c => c.status === 'issued').length;
 
   // Sidebar Component
   const SidebarItem = ({ icon: Icon, label, tabId }) => (
@@ -25,10 +108,10 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
 
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)] bg-slate-50 w-full" style={{ marginTop: '-2rem', marginBottom: '-2rem', marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)' }}>
-      
+
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-2 shrink-0 md:sticky md:top-[80px] md:h-[calc(100vh-80px)] overflow-y-auto">
-        
+
         {/* User Profile Summary */}
         <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl mb-4 border border-slate-100">
           <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-black text-lg shrink-0">
@@ -53,7 +136,7 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
-        
+
         {/* OVERVIEW TAB */}
         {dashboardTab === 'overview' && (
           <div className="max-w-5xl mx-auto space-y-8">
@@ -193,20 +276,97 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
         {/* CERTIFICATES TAB */}
         {dashboardTab === 'certificates' && (
           <div className="max-w-5xl mx-auto">
-             <h2 className="text-2xl font-black text-slate-900 mb-6">My Certificates</h2>
-             {currentUser.certificates && currentUser.certificates.length > 0 ? (
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 {/* Map certificates here */}
-               </div>
-             ) : (
-               <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <Award className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">No Certificates Yet</h3>
-                  <p className="text-slate-500 text-sm max-w-sm">Complete a course or internship program to earn your certificate.</p>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-slate-900">My Certificates</h2>
+              <button
+                onClick={loadCertificates}
+                disabled={certLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+              >
+                <RefreshCw className={`w-4 h-4 ${certLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {certError && (
+              <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {certError}
+              </div>
+            )}
+
+            {certLoading && certificates.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                <LoaderCircle className="w-5 h-5 animate-spin" />
+                Loading certificates…
+              </div>
+            ) : certificates.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {certificates.map((cert) => {
+                  const isValid = cert.status === 'issued';
+
+                  return (
+                    <div
+                      key={cert.id}
+                      className={`bg-white rounded-3xl border shadow-sm p-6 flex flex-col ${isValid ? 'border-slate-200' : 'border-red-200 opacity-80'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+                          <Award className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${isValid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
+                        >
+                          {isValid ? 'Valid' : 'Revoked'}
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-slate-900 text-lg leading-snug">{cert.program_name}</h3>
+                      <p className="text-xs uppercase font-bold text-slate-400 mt-1">
+                        {cert.certificate_type === 'course' ? 'Course Completion' : 'Internship Completion'}
+                      </p>
+
+                      <div className="mt-4 space-y-1.5 text-sm text-slate-600">
+                        <p>
+                          <span className="font-semibold text-slate-500">Certificate No: </span>
+                          <span className="font-mono font-bold text-sky-700">{cert.certificate_number}</span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-500">Issued on: </span>
+                          {formatDate(cert.issued_date)}
+                        </p>
+                        {cert.grade && (
+                          <p>
+                            <span className="font-semibold text-slate-500">Grade: </span>
+                            {cert.grade}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => downloadCertificate(cert)}
+                        disabled={!isValid || !cert.file_path || downloadingId === cert.id}
+                        className="mt-6 w-full inline-flex items-center justify-center gap-2 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {downloadingId === cert.id ? (
+                          <LoaderCircle className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {isValid ? 'Download PDF' : 'Certificate Revoked'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                  <Award className="w-8 h-8 text-slate-400" />
                 </div>
-             )}
+                <h3 className="text-lg font-bold text-slate-900 mb-2">No Certificates Yet</h3>
+                <p className="text-slate-500 text-sm max-w-sm">Complete a course or internship program to earn your certificate.</p>
+              </div>
+            )}
           </div>
         )}
 
