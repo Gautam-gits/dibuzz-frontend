@@ -3,8 +3,6 @@ import { jsPDF } from 'jspdf';
 /* ---------- Helpers ---------- */
 
 // Letter-spacing wala text ekdum sahi centre me draw karta hai.
-// (jsPDF ka align:'center' charSpace ke saath thoda side me khisak jata hai,
-// isliye width khud calculate karke draw karte hain.)
 // Note: pehle setFont / setFontSize karo, phir ise call karo.
 function drawSpacedCentered(doc, text, centerX, y, charSpace = 0) {
   const w = doc.getTextWidth(text) + charSpace * (text.length - 1);
@@ -90,7 +88,8 @@ export async function preloadCertificateImages(paths = {
   logo: '/logo.png',
   msme: '/msme.png',
   iso: '/iso.png',
-  mca: '/mca.png'
+  mca: '/mca.png',
+  stamp: '/stamp.png'
 }) {
   const out = {};
   await Promise.all(
@@ -129,7 +128,7 @@ export function createCertificatePdf(data) {
     signatoryName = 'Gautam Kumar',
     signatoryTitle = 'Director',
     verifyUrl = '', // optional: e.g. 'dibuzz.com/verify'
-    images = {}     // optional preloaded data-URLs: { logo, msme, iso, mca }
+    images = {}     // optional preloaded data-URLs: { logo, msme, iso, mca, stamp }
   } = data;
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -204,7 +203,7 @@ export function createCertificatePdf(data) {
   doc.setTextColor(...NAVY);
   drawSpacedCentered(doc, 'CERTIFICATE', cx, 44, 2);
 
-  // OF ACHIEVEMENT (ab ekdum centre me)
+  // OF ACHIEVEMENT
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...GRAY);
@@ -297,7 +296,7 @@ export function createCertificatePdf(data) {
 
   const lineY = 166;
 
-  // Left: Date of issue (ab iske upar line nahi hai)
+  // Left: Date of issue
   const formattedIssuedDate = new Date(`${issuedDate}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric'
   });
@@ -311,7 +310,7 @@ export function createCertificatePdf(data) {
   doc.setTextColor(...GRAY);
   drawSpacedCentered(doc, 'DATE OF ISSUE', dateX, lineY + 6, 0.8);
 
-  // Centre: Signature (stamp hata diya, isliye ab page ke ekdum centre me)
+  // Centre: Signature
   const sigX = cx;
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(20);
@@ -331,11 +330,25 @@ export function createCertificatePdf(data) {
   doc.setTextColor(90, 90, 90);
   doc.text(signatoryTitle, sigX, lineY + 11, { align: 'center' });
 
-  // Digitally signed by
+  // Authorised Signatory line (pehle yahan "Digitally signed by" tha)
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7.5);
   doc.setTextColor(...TEAL);
-  doc.text(`Digitally signed by ${signatoryName}`, sigX, lineY + 16.5, { align: 'center' });
+  doc.text(`Authorised Signatory - ${signatoryName}`, sigX, lineY + 16.5, { align: 'center' });
+
+  // Company stamp: signature ke upar (signature draw hone ke BAAD, taaki upar dikhe)
+  if (images.stamp) {
+    const stampSize = 30;
+    const stampX = sigX - 3;   // thoda right me, taaki naam ke upar aaye
+    const stampY = 148;
+    try {
+      doc.setGState(new doc.GState({ opacity: 0.9 }));
+    } catch (e) { /* opacity support nahi to seedha draw hoga */ }
+    drawImageSafe(doc, images.stamp, stampX, stampY, stampSize, stampSize);
+    try {
+      doc.setGState(new doc.GState({ opacity: 1 }));
+    } catch (e) { /* skip */ }
+  }
 
   // Badges: MSME, ISO, MCA
   const badges = [
