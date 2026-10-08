@@ -89,7 +89,7 @@ export default function App() {
   const [showSqlModal, setShowSqlModal] = useState(false);
 
   // History & Navigation State Management (Fixes Browser & Mobile Back Button)
-    const handleTabChange = (tabName) => {
+  const handleTabChange = (tabName) => {
     if (tabName === 'admin' && currentUser?.role !== 'admin') {
       if (!currentUser) {
         setAuthModal({ isOpen: true, mode: 'login' });
@@ -202,6 +202,9 @@ export default function App() {
         skills: typeof i.skills === 'string' ? JSON.parse(i.skills) : (i.skills || []),
         description: i.description,
         image: i.image,
+        paymentRequired: Boolean(i.payment_required),
+        feeAmount: Number(i.fee_amount || 0),
+        currency: i.currency || 'INR',
         lastDateToApply: i.last_date || i.lastDateToApply || '2026'
       })));
 
@@ -218,7 +221,7 @@ export default function App() {
         certificates: p.certificates || [],
         profileImage: p.profile_image || p.profileImage || null
       })));
-      
+
       const { data: dbFaqs } = await supabase.from('faqs').select('*').order('id', { ascending: false });
       if (dbFaqs) setFaqs(dbFaqs);
 
@@ -235,15 +238,15 @@ export default function App() {
 
     // Setup Realtime Subscriptions
     const channel = supabase.channel('schema-db-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'internships' }, () => fetchData())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchData())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'faqs' }, () => fetchData())
-          .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'internships' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'faqs' }, () => fetchData())
+      .subscribe();
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Save to localStorage as backup
@@ -279,7 +282,7 @@ export default function App() {
     localStorage.setItem('dibuzz_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
-     const mapProfileToUser = (profile) => ({
+  const mapProfileToUser = (profile) => ({
     id: profile.id,
     name: profile.full_name || 'Student',
     email: profile.email,
@@ -287,10 +290,10 @@ export default function App() {
     role: profile.role || 'student',
     joinedDate: profile.joined_date
       ? new Date(profile.joined_date).toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        })
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
       : '',
     collegeRegNo: profile.college_reg_no || '',
     collegeName: profile.college_name || '',
@@ -356,9 +359,9 @@ export default function App() {
       listener.subscription.unsubscribe();
     };
   }, []);
-  
+
   // Auth Handlers
-    const handleLogin = async (email, password) => {
+  const handleLogin = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password
@@ -457,7 +460,7 @@ export default function App() {
     setActiveTab('home');
   };
 
-     const handleEnrollTrigger = (course) => {
+  const handleEnrollTrigger = (course) => {
     if (!currentUser) {
       setAuthModal({ isOpen: true, mode: 'login' });
       return;
@@ -465,7 +468,7 @@ export default function App() {
 
     setPaymentCourse(course);
   };
-  
+
   const handlePaymentSuccess = async (courseId, receiptData) => {
     const updatedUser = {
       ...currentUser,
@@ -713,7 +716,7 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage setActiveTab={handleTabChange} companyInfo={companyInfo} />
         )}
-        
+
         {activeTab === 'home' && (
           <>
             <Hero
@@ -725,67 +728,24 @@ export default function App() {
               users={users}
               transactions={transactions}
             />
-            
-            <CourseExplorer
-              courses={courses}
-              onSelectCourse={handleSelectCourse}
-              onEnrollCourse={handleEnrollTrigger}
-              userEnrolledIds={userEnrolledIds}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              onNavigateToAdmin={() => handleTabChange('admin')}
-            />
 
-            <HomeSections
-              faqs={faqs}
-              internships={internships}
+            <InternshipSection
               companyInfo={companyInfo}
-              setActiveTab={handleTabChange}
+              internships={internships}
               currentUser={currentUser}
               onOpenAuthModal={handleOpenAuthModal}
-              onEnrollCourse={handleEnrollTrigger}
             />
-
-            {/* Testimonials */}
-            {TESTIMONIALS && TESTIMONIALS.length > 0 && (
-              <section className="py-16 bg-slate-50 border-t border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="text-center mb-12">
-                    <h2 className="text-3xl font-extrabold text-slate-900 font-heading">Placement & Career Success Stories</h2>
-                    <p className="text-slate-600 text-sm mt-1 font-medium">Read how our graduates cracked high-paying tech roles</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {TESTIMONIALS.map((item) => (
-                      <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                        <p className="text-xs text-slate-600 italic leading-relaxed font-normal">"{item.quote}"</p>
-                        
-                        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-3">
-                          <img src={item.image} alt={item.name} className="w-10 h-10 rounded-full object-cover border border-sky-200" />
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{item.name}</p>
-                            <p className="text-[10px] text-slate-500">{item.role}</p>
-                            <span className="text-[10px] font-extrabold text-emerald-700">{item.package}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
           </>
         )}
 
+
+
         {activeTab === 'courses' && (
-          <CourseExplorer
-            courses={courses}
-            onSelectCourse={handleSelectCourse}
-            onEnrollCourse={handleEnrollTrigger}
-            userEnrolledIds={userEnrolledIds}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onNavigateToAdmin={() => handleTabChange('admin')}
+          <InternshipSection
+            companyInfo={companyInfo}
+            internships={internships}
+            currentUser={currentUser}
+            onOpenAuthModal={handleOpenAuthModal}
           />
         )}
 

@@ -42,7 +42,7 @@ export function InternshipSection({
   currentUser,
   onOpenAuthModal
 }) {
-  const [filterSem, setFilterSem] = useState('3rd Sem');
+  const [filterSem, setFilterSem] = useState('All');
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [applications, setApplications] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

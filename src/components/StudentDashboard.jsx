@@ -1,31 +1,82 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  BookOpen, ShieldCheck, CreditCard, Award, LayoutDashboard, Compass,
-  PlayCircle, Download, LoaderCircle, RefreshCw
+  Award,
+  Briefcase,
+  ClipboardList,
+  Compass,
+  Download,
+  LayoutDashboard,
+  LoaderCircle,
+  RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { CourseExplorer } from './CourseExplorer';
 import { InternshipSection } from './InternshipSection';
 
-const formatDate = (dateValue) => {
-  if (!dateValue) return '—';
-  return new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-IN', {
+const formatDate = (value) => {
+  if (!value) return '—';
+
+  return new Date(value).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric'
+    year: 'numeric',
   });
 };
 
-export function StudentDashboard({ currentUser, courses, internships, userTransactions, verifiedCertificates, setActiveTab, companyInfo, onSelectCourse, onEnrollCourse, userEnrolledIds, onOpenAuthModal }) {
-  const [dashboardTab, setDashboardTab] = useState('overview');
+const STATUS_STYLE = {
+  applied: 'bg-sky-100 text-sky-700',
+  accepted: 'bg-emerald-100 text-emerald-700',
+  rejected: 'bg-red-100 text-red-700',
+  payment_pending: 'bg-amber-100 text-amber-700',
+  enrolled: 'bg-violet-100 text-violet-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-slate-100 text-slate-700',
+};
 
-  // Certificates issued by the admin (loaded from Supabase)
+const STATUS_LABEL = {
+  applied: 'Applied',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  payment_pending: 'Payment Pending',
+  enrolled: 'Enrolled',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+export function StudentDashboard({
+  currentUser,
+  internships = [],
+  companyInfo,
+  onOpenAuthModal,
+}) {
+  const [dashboardTab, setDashboardTab] = useState('overview');
+  const [applications, setApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+
   const [certificates, setCertificates] = useState([]);
   const [certLoading, setCertLoading] = useState(false);
   const [certError, setCertError] = useState('');
   const [downloadingId, setDownloadingId] = useState(null);
 
   const userId = currentUser?.id;
+
+  const loadApplications = useCallback(async () => {
+    if (!userId) return;
+
+    setApplicationsLoading(true);
+
+    const { data, error } = await supabase
+      .from('internship_applications')
+      .select('*')
+      .eq('student_id', userId)
+      .order('applied_at', { ascending: false });
+
+    if (!error) {
+      setApplications(data || []);
+    }
+
+    setApplicationsLoading(false);
+  }, [userId]);
 
   const loadCertificates = useCallback(async () => {
     if (!userId) return;
@@ -48,15 +99,27 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
     setCertLoading(false);
   }, [userId]);
 
-  // Load once on login so the "Completed" count on Overview is correct
   useEffect(() => {
+    loadApplications();
     loadCertificates();
-  }, [loadCertificates]);
+  }, [loadApplications, loadCertificates]);
 
-  // Refresh every time the student opens the Certificates tab
-  useEffect(() => {
-    if (dashboardTab === 'certificates') loadCertificates();
-  }, [dashboardTab, loadCertificates]);
+  const applicationCards = useMemo(() => {
+    return applications.map((application) => ({
+      ...application,
+      internship: internships.find(
+        (item) => String(item.id) === String(application.internship_id)
+      ),
+    }));
+  }, [applications, internships]);
+
+  const activeInternshipCount = applicationCards.filter((application) =>
+    ['accepted', 'payment_pending', 'enrolled'].includes(application.status)
+  ).length;
+
+  const completedCount = certificates.filter(
+    (certificate) => certificate.status === 'issued'
+  ).length;
 
   const downloadCertificate = async (certificate) => {
     if (!certificate.file_path) {
@@ -70,7 +133,7 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
     const { data, error } = await supabase.storage
       .from('certificates')
       .createSignedUrl(certificate.file_path, 120, {
-        download: `${certificate.certificate_number}.pdf`
+        download: `${certificate.certificate_number}.pdf`,
       });
 
     setDownloadingId(null);
@@ -91,133 +154,199 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
 
   if (!currentUser) return null;
 
-  const enrolledCourseObjects = courses.filter(c => currentUser.enrolledCourses?.includes(c.id));
-  const activeCourseCount = enrolledCourseObjects.length;
-  const completedCount = certificates.filter(c => c.status === 'issued').length;
-
-  // Sidebar Component
   const SidebarItem = ({ icon: Icon, label, tabId }) => (
     <button
       onClick={() => setDashboardTab(tabId)}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${dashboardTab === tabId ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'}`}
+      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all ${
+        dashboardTab === tabId
+          ? 'bg-sky-600 font-bold text-white shadow-md'
+          : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      }`}
     >
-      <Icon className={`w-5 h-5 ${dashboardTab === tabId ? 'text-white' : 'text-slate-400'}`} />
+      <Icon
+        className={`h-5 w-5 ${
+          dashboardTab === tabId ? 'text-white' : 'text-slate-400'
+        }`}
+      />
       <span>{label}</span>
     </button>
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)] bg-slate-50 w-full" style={{ marginTop: '-2rem', marginBottom: '-2rem', marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)' }}>
-
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-2 shrink-0 md:sticky md:top-[80px] md:h-[calc(100vh-80px)] overflow-y-auto">
-
-        {/* User Profile Summary */}
-        <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl mb-4 border border-slate-100">
-          <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-black text-lg shrink-0">
-            {currentUser.name.charAt(0)}
+    <div
+      className="flex min-h-[calc(100vh-80px)] w-full flex-col bg-slate-50 md:flex-row"
+      style={{
+        marginTop: '-2rem',
+        marginBottom: '-2rem',
+        marginLeft: 'calc(-50vw + 50%)',
+        marginRight: 'calc(-50vw + 50%)',
+      }}
+    >
+      <aside className="flex w-full shrink-0 flex-col gap-2 border-r border-slate-200 bg-white p-4 md:sticky md:top-[80px] md:h-[calc(100vh-80px)] md:w-64">
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-black text-sky-700">
+            {currentUser.name?.charAt(0)?.toUpperCase() || 'S'}
           </div>
-          <div className="overflow-hidden">
-            <h3 className="font-bold text-slate-900 truncate">{currentUser.name}</h3>
-            <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
+
+          <div className="min-w-0">
+            <h3 className="truncate font-bold text-slate-900">
+              {currentUser.name}
+            </h3>
+            <p className="truncate text-xs text-slate-500">{currentUser.email}</p>
           </div>
         </div>
 
-        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-2">Main Menu</div>
-        <SidebarItem icon={LayoutDashboard} label="Overview" tabId="overview" />
-        <SidebarItem icon={BookOpen} label="My Learning" tabId="learning" />
-        <SidebarItem icon={Award} label="Certificates" tabId="certificates" />
-        <SidebarItem icon={CreditCard} label="Payments" tabId="payments" />
+        <p className="mb-2 mt-2 px-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+          My Internship Portal
+        </p>
 
-        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-6">Discover</div>
-        <SidebarItem icon={Compass} label="Explore Courses" tabId="explore_courses" />
-        <SidebarItem icon={ShieldCheck} label="Explore Internships" tabId="explore_internships" />
+        <SidebarItem
+          icon={LayoutDashboard}
+          label="Overview"
+          tabId="overview"
+        />
+        <SidebarItem
+          icon={ClipboardList}
+          label="My Applications"
+          tabId="applications"
+        />
+        <SidebarItem
+          icon={Award}
+          label="Certificates"
+          tabId="certificates"
+        />
+
+        <p className="mb-2 mt-6 px-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+          Discover
+        </p>
+
+        <SidebarItem
+          icon={Compass}
+          label="Browse Internships"
+          tabId="browse"
+        />
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
-
-        {/* OVERVIEW TAB */}
+      <main className="w-full flex-1 overflow-y-auto p-4 md:p-8">
         {dashboardTab === 'overview' && (
-          <div className="max-w-5xl mx-auto space-y-8">
-            <div className="flex items-center gap-5">
-              {currentUser.profileImage ? (
-                <img src={currentUser.profileImage} alt="Profile" className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-sm shrink-0" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 font-bold text-2xl border-4 border-white shadow-sm shrink-0">
-                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-              )}
-              <div>
-                <h1 className="text-3xl font-black text-slate-900 font-heading">Welcome back, {currentUser.name ? currentUser.name.split(' ')[0] : 'Student'}!</h1>
-                <p className="text-slate-500 mt-1 font-medium">Ready to continue your learning journey today?</p>
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-6 h-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">{activeCourseCount}</p>
-                  <p className="text-sm text-slate-500 font-semibold">Active Courses</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
-                  <Award className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">{completedCount}</p>
-                  <p className="text-sm text-slate-500 font-semibold">Completed</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">0</p>
-                  <p className="text-sm text-slate-500 font-semibold">Active Internships</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Resume Learning Section */}
+          <div className="mx-auto max-w-5xl space-y-8">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <PlayCircle className="w-5 h-5 text-sky-600" /> Resume Learning
-              </h2>
-              {enrolledCourseObjects.length > 0 ? (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-6 justify-between">
-                  <div className="flex items-center gap-4 w-full">
-                    <div className="w-20 h-20 rounded-2xl bg-slate-100 overflow-hidden shrink-0">
-                      <img src={enrolledCourseObjects[0].image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80"} alt="Course" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-slate-900 text-lg">{enrolledCourseObjects[0].title}</h3>
-                      <p className="text-sm text-slate-500">Next: Module 2 - Advanced Concepts</p>
-                      <div className="mt-3 bg-slate-100 rounded-full h-2 w-full max-w-md overflow-hidden">
-                        <div className="bg-sky-500 w-1/4 h-full rounded-full"></div>
+              <h1 className="font-heading text-3xl font-black text-slate-900">
+                Welcome back, {currentUser.name?.split(' ')[0] || 'Student'}!
+              </h1>
+              <p className="mt-1 font-medium text-slate-500">
+                Track your internship applications and learning journey here.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100">
+                  <ClipboardList className="h-6 w-6 text-sky-600" />
+                </div>
+                <div>
+                  <p className="text-3xl font-black text-slate-900">
+                    {applications.length}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Applications
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100">
+                  <Briefcase className="h-6 w-6 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-3xl font-black text-slate-900">
+                    {activeInternshipCount}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Active Internships
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
+                  <Award className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-3xl font-black text-slate-900">
+                    {completedCount}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Certificates
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Recent Applications
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your latest internship application updates.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setDashboardTab('applications')}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                >
+                  View All
+                </button>
+              </div>
+
+              {applicationsLoading ? (
+                <div className="flex items-center gap-2 py-8 text-sm font-semibold text-slate-500">
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                  Loading applications...
+                </div>
+              ) : applicationCards.length > 0 ? (
+                <div className="space-y-3">
+                  {applicationCards.slice(0, 3).map((application) => (
+                    <div
+                      key={application.id}
+                      className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:items-center"
+                    >
+                      <div>
+                        <h3 className="font-bold text-slate-900">
+                          {application.internship?.title || 'Internship Program'}
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Applied on {formatDate(application.applied_at)}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1 font-semibold">25% Completed</p>
+
+                      <span
+                        className={`w-fit rounded-full px-3 py-1 text-[11px] font-black ${
+                          STATUS_STYLE[application.status] || STATUS_STYLE.applied
+                        }`}
+                      >
+                        {STATUS_LABEL[application.status] || 'Applied'}
+                      </span>
                     </div>
-                  </div>
-                  <button onClick={() => alert('Redirecting to Course Content Platform...')} className="w-full md:w-auto px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors whitespace-nowrap cursor-pointer">
-                    Continue Lesson
-                  </button>
+                  ))}
                 </div>
               ) : (
-                <div className="bg-white border border-slate-200 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <Compass className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">No Active Courses</h3>
-                  <p className="text-slate-500 text-sm max-w-sm mb-6">You haven't enrolled in any courses yet. Start your journey by exploring our catalog.</p>
-                  <button onClick={() => setDashboardTab('explore_courses')} className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors cursor-pointer">
-                    Explore Courses
+                <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                  <Briefcase className="mx-auto h-10 w-10 text-slate-300" />
+                  <h3 className="mt-3 font-bold text-slate-900">
+                    No applications yet
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Browse available internships and apply for the one you like.
+                  </p>
+                  <button
+                    onClick={() => setDashboardTab('browse')}
+                    className="mt-5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
+                  >
+                    Browse Internships
                   </button>
                 </div>
               )}
@@ -225,65 +354,125 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
           </div>
         )}
 
-        {/* MY LEARNING TAB */}
-        {dashboardTab === 'learning' && (
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-black text-slate-900 mb-6">My Learning</h2>
-            {enrolledCourseObjects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {enrolledCourseObjects.map(course => (
-                  <div key={course.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col">
-                    <div className="relative h-40 overflow-hidden bg-slate-100">
-                      <img src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80"} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute top-3 left-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-bold text-sky-700 shadow-sm">
-                        Enrolled
+        {dashboardTab === 'applications' && (
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">
+                  My Applications
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Track every internship application in one place.
+                </p>
+              </div>
+
+              <button
+                onClick={loadApplications}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
+            </div>
+
+            {applicationsLoading ? (
+              <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 text-sm font-semibold text-slate-500">
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                Loading applications...
+              </div>
+            ) : applicationCards.length > 0 ? (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {applicationCards.map((application) => (
+                  <div
+                    key={application.id}
+                    className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900">
+                          {application.internship?.title || 'Internship Program'}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {application.internship?.duration || 'Duration to be announced'}
+                        </p>
                       </div>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-[10px] font-black ${
+                          STATUS_STYLE[application.status] || STATUS_STYLE.applied
+                        }`}
+                      >
+                        {STATUS_LABEL[application.status] || 'Applied'}
+                      </span>
                     </div>
-                    <div className="p-5 flex-1 flex flex-col">
-                      <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-sky-700 transition-colors">{course.title}</h3>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-4">{course.description}</p>
-                      <div className="mt-auto">
-                        <div className="flex justify-between items-center text-xs font-bold mb-2">
-                          <span className="text-sky-600">Progress</span>
-                          <span className="text-slate-600">0%</span>
-                        </div>
-                        <div className="bg-slate-100 rounded-full h-1.5 w-full overflow-hidden mb-4">
-                          <div className="bg-sky-500 w-0 h-full rounded-full"></div>
-                        </div>
-                        <button onClick={() => alert('Redirecting to Course Content Platform...')} className="w-full py-2.5 bg-slate-100 hover:bg-sky-50 text-sky-700 font-bold rounded-xl transition-colors cursor-pointer border border-transparent hover:border-sky-200">
-                          Start Course
-                        </button>
-                      </div>
+
+                    <div className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                      <p className="text-slate-600">
+                        <span className="font-semibold text-slate-500">
+                          Application No:
+                        </span>{' '}
+                        <span className="font-mono font-bold text-sky-700">
+                          {application.application_number || '—'}
+                        </span>
+                      </p>
+
+                      <p className="text-slate-600">
+                        <span className="font-semibold text-slate-500">
+                          Applied:
+                        </span>{' '}
+                        {formatDate(application.applied_at)}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <BookOpen className="w-8 h-8 text-slate-400" />
-                  </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">No Enrolled Courses</h3>
-                <p className="text-slate-500 text-sm max-w-sm mb-6">You are not enrolled in any courses right now.</p>
-                <button onClick={() => setDashboardTab('explore_courses')} className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors cursor-pointer">
-                  Browse Catalog
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
+                <h3 className="text-lg font-bold text-slate-900">
+                  No internship applications yet
+                </h3>
+                <button
+                  onClick={() => setDashboardTab('browse')}
+                  className="mt-5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
+                >
+                  Browse Internships
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* CERTIFICATES TAB */}
+        {dashboardTab === 'browse' && (
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-slate-200 bg-white">
+            <InternshipSection
+              companyInfo={companyInfo}
+              internships={internships}
+              currentUser={currentUser}
+              onOpenAuthModal={onOpenAuthModal}
+            />
+          </div>
+        )}
+
         {dashboardTab === 'certificates' && (
-          <div className="max-w-5xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black text-slate-900">My Certificates</h2>
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">
+                  My Certificates
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Download certificates issued by the admin.
+                </p>
+              </div>
+
               <button
                 onClick={loadCertificates}
                 disabled={certLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
-                <RefreshCw className={`w-4 h-4 ${certLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${certLoading ? 'animate-spin' : ''}`}
+                />
                 Refresh
               </button>
             </div>
@@ -295,63 +484,81 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
             )}
 
             {certLoading && certificates.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
-                <LoaderCircle className="w-5 h-5 animate-spin" />
-                Loading certificates…
+              <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 text-sm font-semibold text-slate-500">
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                Loading certificates...
               </div>
             ) : certificates.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {certificates.map((cert) => {
-                  const isValid = cert.status === 'issued';
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {certificates.map((certificate) => {
+                  const isValid = certificate.status === 'issued';
 
                   return (
                     <div
-                      key={cert.id}
-                      className={`bg-white rounded-3xl border shadow-sm p-6 flex flex-col ${isValid ? 'border-slate-200' : 'border-red-200 opacity-80'}`}
+                      key={certificate.id}
+                      className={`flex flex-col rounded-3xl border bg-white p-6 shadow-sm ${
+                        isValid ? 'border-slate-200' : 'border-red-200 opacity-80'
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
-                          <Award className="w-6 h-6 text-emerald-600" />
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100">
+                          <Award className="h-6 w-6 text-emerald-600" />
                         </div>
+
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${isValid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                            isValid
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
                         >
                           {isValid ? 'Valid' : 'Revoked'}
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-slate-900 text-lg leading-snug">{cert.program_name}</h3>
-                      <p className="text-xs uppercase font-bold text-slate-400 mt-1">
-                        {cert.certificate_type === 'course' ? 'Course Completion' : 'Internship Completion'}
+                      <h3 className="text-lg font-bold leading-snug text-slate-900">
+                        {certificate.program_name}
+                      </h3>
+
+                      <p className="mt-1 text-xs font-bold uppercase text-slate-400">
+                        {certificate.certificate_type === 'course'
+                          ? 'Course Completion'
+                          : 'Internship Completion'}
                       </p>
 
                       <div className="mt-4 space-y-1.5 text-sm text-slate-600">
                         <p>
-                          <span className="font-semibold text-slate-500">Certificate No: </span>
-                          <span className="font-mono font-bold text-sky-700">{cert.certificate_number}</span>
+                          <span className="font-semibold text-slate-500">
+                            Certificate No:
+                          </span>{' '}
+                          <span className="font-mono font-bold text-sky-700">
+                            {certificate.certificate_number}
+                          </span>
                         </p>
+
                         <p>
-                          <span className="font-semibold text-slate-500">Issued on: </span>
-                          {formatDate(cert.issued_date)}
+                          <span className="font-semibold text-slate-500">
+                            Issued on:
+                          </span>{' '}
+                          {formatDate(certificate.issued_date)}
                         </p>
-                        {cert.grade && (
-                          <p>
-                            <span className="font-semibold text-slate-500">Grade: </span>
-                            {cert.grade}
-                          </p>
-                        )}
                       </div>
 
                       <button
-                        onClick={() => downloadCertificate(cert)}
-                        disabled={!isValid || !cert.file_path || downloadingId === cert.id}
-                        className="mt-6 w-full inline-flex items-center justify-center gap-2 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer"
+                        onClick={() => downloadCertificate(certificate)}
+                        disabled={
+                          !isValid ||
+                          !certificate.file_path ||
+                          downloadingId === certificate.id
+                        }
+                        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 font-bold text-white transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                       >
-                        {downloadingId === cert.id ? (
-                          <LoaderCircle className="w-4 h-4 animate-spin" />
+                        {downloadingId === certificate.id ? (
+                          <LoaderCircle className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Download className="w-4 h-4" />
+                          <Download className="h-4 w-4" />
                         )}
+
                         {isValid ? 'Download PDF' : 'Certificate Revoked'}
                       </button>
                     </div>
@@ -359,89 +566,18 @@ export function StudentDashboard({ currentUser, courses, internships, userTransa
                 })}
               </div>
             ) : (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                  <Award className="w-8 h-8 text-slate-400" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">No Certificates Yet</h3>
-                <p className="text-slate-500 text-sm max-w-sm">Complete a course or internship program to earn your certificate.</p>
+              <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center">
+                <Award className="mx-auto h-12 w-12 text-slate-300" />
+                <h3 className="mt-4 text-lg font-bold text-slate-900">
+                  No Certificates Yet
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Complete an internship program to earn your certificate.
+                </p>
               </div>
             )}
           </div>
         )}
-
-        {/* PAYMENTS TAB */}
-        {dashboardTab === 'payments' && (
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-black text-slate-900 mb-6">Payment History</h2>
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              {userTransactions && userTransactions.length > 0 ? (
-                <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm min-w-[600px]">
-                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
-                    <tr>
-                      <th className="p-4">Transaction ID</th>
-                      <th className="p-4">Item</th>
-                      <th className="p-4">Date</th>
-                      <th className="p-4">Method</th>
-                      <th className="p-4 text-right">Amount</th>
-                      <th className="p-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {userTransactions.map(txn => (
-                      <tr key={txn.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-mono text-slate-600">{txn.id}</td>
-                        <td className="p-4 font-semibold text-slate-900">{txn.courseTitle}</td>
-                        <td className="p-4 text-slate-500">{txn.date}</td>
-                        <td className="p-4 text-slate-500">{txn.method}</td>
-                        <td className="p-4 text-right font-bold text-slate-900">₹{txn.amount}</td>
-                        <td className="p-4 text-center">
-                           <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold whitespace-nowrap">
-                             {txn.status}
-                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              ) : (
-                <div className="p-10 text-center text-slate-500">No payment history found.</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* EXPLORE COURSES TAB */}
-        {dashboardTab === 'explore_courses' && (
-          <div className="max-w-7xl mx-auto">
-             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-0 sm:p-4">
-               <CourseExplorer
-                  courses={courses}
-                  onSelectCourse={onSelectCourse}
-                  onEnrollCourse={onEnrollCourse}
-                  userEnrolledIds={userEnrolledIds}
-                />
-             </div>
-          </div>
-        )}
-
-        {/* EXPLORE INTERNSHIPS TAB */}
-        {dashboardTab === 'explore_internships' && (
-          <div className="max-w-7xl mx-auto">
-             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-0 sm:p-4">
-               <InternshipSection
-                  companyInfo={companyInfo}
-                  internships={internships}
-                  currentUser={currentUser}
-                  onOpenAuthModal={onOpenAuthModal}
-                  onEnrollCourse={onEnrollCourse}
-                />
-             </div>
-          </div>
-        )}
-
       </main>
     </div>
   );

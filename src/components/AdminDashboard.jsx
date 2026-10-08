@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   LayoutDashboard, Award, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
-  X, RefreshCw, Database, Zap, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus,
+  X, RefreshCw, Database, Zap, ClipboardList, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CertificateManager } from './CertificateManager';
@@ -90,13 +90,13 @@ function StatCard({ label, value, sub, icon: Icon, color, loading }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[11px] text-slate-600 font-bold mb-1 uppercase tracking-wide">{label}</label>
+      <label className={LBL}>{label}</label>
       {children}
     </div>
   );
 }
 const INP = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition-all";
-
+const LBL = "block text-[11px] text-slate-600 font-bold mb-1 uppercase tracking-wide";
 /* ─── Modal wrapper ──────────────────────────────────────────── */
 function Modal({ title, icon: Icon, iconColor, onClose, children }) {
   return (
@@ -136,6 +136,8 @@ export function AdminDashboard({
   const [sem, setSem] = useState('All');
   const [busy, setBusy] = useState(false);
   const [db, setDb] = useState('online');
+  const [applications, setApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [confirm, setConfirm] = useState(null);
 
   /* modal states */
@@ -148,7 +150,21 @@ export function AdminDashboard({
   const [editFaq, setEditFaq] = useState(null);
 
   /* add-internship form */
-  const blankInt = { title: '', company: '', type: '', stipend: '', mode: '', duration: '', openings: '', badge: '', description: '', image: '', skills: '' };
+  const blankInt = {
+    title: '',
+    company: '',
+    type: '',
+    stipend: '',
+    mode: '',
+    duration: '',
+    openings: '',
+    badge: '',
+    description: '',
+    image: '',
+    skills: '',
+    paymentRequired: false,
+    feeAmount: 0,
+  };
   const [iForm, setIForm] = useState(blankInt);
 
   /* add-course form */
@@ -181,14 +197,82 @@ export function AdminDashboard({
     add('Data synced with Supabase!', 'success');
     setBusy(false);
   };
+  const loadApplications = useCallback(async () => {
+    setApplicationsLoading(true);
 
+    const { data, error } = await supabase
+      .from('internship_applications')
+      .select('*')
+      .order('applied_at', { ascending: false });
+
+    if (error) {
+      add(`Could not load applications: ${error.message}`, 'error');
+    } else {
+      setApplications(data || []);
+    }
+
+    setApplicationsLoading(false);
+  }, [add]);
+
+  useEffect(() => {
+    if (tab === 'applications') {
+      loadApplications();
+    }
+  }, [tab, loadApplications]);
+  const updateApplicationStatus = async (applicationId, status) => {
+    setBusy(true);
+
+    const { error } = await supabase
+      .from('internship_applications')
+      .update({ status })
+      .eq('id', applicationId);
+
+    if (error) {
+      add(`Update failed: ${error.message}`, 'error');
+    } else {
+      setApplications((previous) =>
+        previous.map((application) =>
+          application.id === applicationId
+            ? { ...application, status }
+            : application
+        )
+      );
+
+      add(
+        status === 'accepted'
+          ? 'Application accepted successfully.'
+          : 'Application rejected.',
+        'success'
+      );
+    }
+
+    setBusy(false);
+  };
   /* ── Handlers for Internships ── */
   const addInt = async (e) => {
     e.preventDefault();
     if (!iForm.title.trim()) { add('Title required', 'error'); return; }
     setBusy(true);
     const skills = iForm.skills ? iForm.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
-    const payload = { title: iForm.title.trim(), company: iForm.company, type: iForm.type, stipend: iForm.stipend, mode: iForm.mode, duration: iForm.duration, openings: Number(iForm.openings), badge: iForm.badge, description: iForm.description, image: iForm.image, skills, last_date: 'Enrollment Open' };
+    const payload = {
+      title: iForm.title.trim(),
+      company: iForm.company,
+      type: iForm.type,
+      stipend: iForm.stipend,
+      mode: iForm.mode,
+      duration: iForm.duration,
+      openings: Number(iForm.openings),
+      badge: iForm.badge,
+      description: iForm.description,
+      image: iForm.image,
+      skills,
+      payment_required: iForm.paymentRequired,
+      fee_amount: iForm.paymentRequired
+        ? Number(iForm.feeAmount || 0)
+        : 0,
+      currency: 'INR',
+      last_date: 'Enrollment Open',
+    };
     try {
       const { error } = await supabase.from('internships').insert([payload]);
       if (error) throw error;
@@ -202,7 +286,25 @@ export function AdminDashboard({
     if (!editInt) return;
     setBusy(true);
     const skills = Array.isArray(editInt.skills) ? editInt.skills : (editInt.skills || '').split(',').map(s => s.trim()).filter(Boolean);
-    const payload = { title: editInt.title, company: editInt.company, type: editInt.type, stipend: editInt.stipend, mode: editInt.mode, duration: editInt.duration, openings: Number(editInt.openings), badge: editInt.badge, description: editInt.description, image: editInt.image, skills, last_date: editInt.lastDateToApply || 'Enrollment Open' };
+    const payload = {
+      title: editInt.title,
+      company: editInt.company,
+      type: editInt.type,
+      stipend: editInt.stipend,
+      mode: editInt.mode,
+      duration: editInt.duration,
+      openings: Number(editInt.openings),
+      badge: editInt.badge,
+      description: editInt.description,
+      image: editInt.image,
+      skills,
+      payment_required: Boolean(editInt.paymentRequired),
+      fee_amount: editInt.paymentRequired
+        ? Number(editInt.feeAmount || 0)
+        : 0,
+      currency: 'INR',
+      last_date: editInt.lastDateToApply || 'Enrollment Open',
+    };
     try {
       const { error } = await supabase.from('internships').update(payload).eq('id', Number(editInt.id));
       if (error) throw error;
@@ -338,6 +440,7 @@ export function AdminDashboard({
   const TABS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'internships', label: 'Internships', icon: Briefcase },
+    { id: 'applications', label: 'Applications', icon: ClipboardList },
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
@@ -395,8 +498,8 @@ export function AdminDashboard({
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
                   className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-b-2 ${tab === t.id
-                      ? 'text-violet-700 border-violet-600 bg-violet-50'
-                      : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-50'
+                    ? 'text-violet-700 border-violet-600 bg-violet-50'
+                    : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-50'
                     }`}>
                   <t.icon className="w-4 h-4" />
                   {t.label}
@@ -511,6 +614,141 @@ export function AdminDashboard({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── APPLICATIONS ── */}
+          {tab === 'applications' && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Internship Applications
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Review student applications and accept or reject them.
+                  </p>
+                </div>
+
+                <button
+                  onClick={loadApplications}
+                  disabled={applicationsLoading}
+                  className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${applicationsLoading ? 'animate-spin' : ''}`}
+                  />
+                  Refresh
+                </button>
+              </div>
+
+              {applicationsLoading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm font-semibold text-slate-500">
+                  Loading applications...
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+                  <Briefcase className="mx-auto h-10 w-10 text-slate-300" />
+                  <h3 className="mt-3 font-bold text-slate-900">
+                    No applications yet
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Student internship applications will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  {applications.map((application) => {
+                    const internship = internships.find(
+                      (item) => String(item.id) === String(application.internship_id)
+                    );
+
+                    const statusColor =
+                      application.status === 'accepted'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : application.status === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-sky-100 text-sky-700';
+
+                    return (
+                      <div
+                        key={application.id}
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Internship
+                            </p>
+
+                            <h3 className="mt-1 text-base font-black text-slate-900">
+                              {internship?.title || 'Internship Program'}
+                            </h3>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-[10px] font-black capitalize ${statusColor}`}
+                          >
+                            {application.status?.replace('_', ' ') || 'applied'}
+                          </span>
+                        </div>
+
+                        <div className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                          <p className="font-bold text-slate-900">
+                            {application.student_name}
+                          </p>
+
+                          <p className="text-slate-600">{application.student_email}</p>
+
+                          <p className="text-slate-600">
+                            {application.student_phone || 'Phone not provided'}
+                          </p>
+
+                          <p className="text-slate-600">
+                            {application.college_name || 'College not provided'}
+                          </p>
+
+                          <p className="text-slate-600">
+                            {application.degree || 'Degree not provided'}
+                          </p>
+                        </div>
+
+                        <div className="mt-5 flex gap-3 border-t border-slate-100 pt-4">
+                          {application.status === 'applied' ? (
+                            <>
+                              <button
+                                onClick={() =>
+                                  updateApplicationStatus(application.id, 'accepted')
+                                }
+                                disabled={busy}
+                                className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                              >
+                                Accept
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateApplicationStatus(application.id, 'rejected')
+                                }
+                                disabled={busy}
+                                className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : (
+                            <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-xs font-semibold text-slate-500">
+                              {application.status === 'accepted'
+                                ? 'Accepted — payment setup will come next.'
+                                : 'Application decision has been recorded.'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -710,6 +948,61 @@ export function AdminDashboard({
                   <option>3rd Sem</option><option>5th Sem</option><option>7th Sem</option>
                 </select>
               </Field>
+              <Field label="Payment Type">
+                <select
+                  value={
+                    (editInt ? editInt.paymentRequired : iForm.paymentRequired)
+                      ? 'paid'
+                      : 'free'
+                  }
+                  onChange={(e) => {
+                    const isPaid = e.target.value === 'paid';
+
+                    if (editInt) {
+                      setEditInt((previous) => ({
+                        ...previous,
+                        paymentRequired: isPaid,
+                        feeAmount: isPaid ? previous.feeAmount || 0 : 0,
+                      }));
+                    } else {
+                      setIForm((previous) => ({
+                        ...previous,
+                        paymentRequired: isPaid,
+                        feeAmount: isPaid ? previous.feeAmount || 0 : 0,
+                      }));
+                    }
+                  }}
+                  className={INP}
+                >
+                  <option value="free">Free Internship</option>
+                  <option value="paid">Paid Internship</option>
+                </select>
+              </Field>
+
+              {(editInt ? editInt.paymentRequired : iForm.paymentRequired) && (
+                <Field label="Fee Amount (₹)">
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Example: 239"
+                    value={editInt ? editInt.feeAmount || '' : iForm.feeAmount || ''}
+                    onChange={(e) => {
+                      if (editInt) {
+                        setEditInt((previous) => ({
+                          ...previous,
+                          feeAmount: e.target.value,
+                        }));
+                      } else {
+                        setIForm((previous) => ({
+                          ...previous,
+                          feeAmount: e.target.value,
+                        }));
+                      }
+                    }}
+                    className={INP}
+                  />
+                </Field>
+              )}
             </div>
             <Field label="Skills (comma separated)">
               <input type="text" placeholder="React, Node, Express" value={editInt ? (Array.isArray(editInt.skills) ? editInt.skills.join(', ') : editInt.skills) : iForm.skills} onChange={e => editInt ? setEditInt(p => ({ ...p, skills: e.target.value })) : setIForm(p => ({ ...p, skills: e.target.value }))} className={INP} />
