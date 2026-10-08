@@ -41,29 +41,9 @@ export default function App() {
     }
   });
 
-  const [courses, setCourses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dibuzz_courses');
-      return saved ? JSON.parse(saved) : INITIAL_COURSES;
-    } catch (e) {
-      return INITIAL_COURSES;
-    }
-  });
+  const [courses, setCourses] = useState([]);
 
-  const [internships, setInternships] = useState(() => {
-    try {
-      localStorage.removeItem('dibuzz_internships');
-      const saved = localStorage.getItem('dibuzz_internships');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-      return INITIAL_INTERNSHIPS;
-    } catch (e) {
-      return INITIAL_INTERNSHIPS;
-    }
-  });
-
+  const [internships, setInternships] = useState([]);
   const [users, setUsers] = useState([]);
 
   const [verifiedCertificates, setVerifiedCertificates] = useState(() => {
@@ -866,6 +846,7 @@ export default function App() {
             setVerifiedCertificates={setVerifiedCertificates}
             faqs={faqs}
             setFaqs={setFaqs}
+            refreshData={fetchData}
           />
         )}
       </main>
