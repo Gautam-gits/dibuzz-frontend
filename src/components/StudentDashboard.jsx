@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Award,
+  BookOpen,
   Briefcase,
   ClipboardList,
   Compass,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { InternshipSection } from './InternshipSection';
+import { CoursePlayer } from './CoursePlayer';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -50,6 +52,7 @@ export function StudentDashboard({
   onOpenAuthModal,
 }) {
   const [dashboardTab, setDashboardTab] = useState('overview');
+  const [openCourse, setOpenCourse] = useState(null);
   const [applications, setApplications] = useState([]);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
 
@@ -204,6 +207,11 @@ export function StudentDashboard({
           icon={LayoutDashboard}
           label="Overview"
           tabId="overview"
+        />
+        <SidebarItem
+          icon={BookOpen}
+          label="My Courses"
+          tabId="courses"
         />
         <SidebarItem
           icon={ClipboardList}
@@ -440,6 +448,51 @@ export function StudentDashboard({
               </div>
             )}
           </div>
+        )}
+
+        {dashboardTab === 'courses' && (
+          openCourse ? (
+            <CoursePlayer
+              internship={openCourse}
+              currentUser={currentUser}
+              onBack={() => setOpenCourse(null)}
+            />
+          ) : (
+            <div className="mx-auto max-w-5xl">
+              <h2 className="text-2xl font-black text-slate-900">My Courses</h2>
+              <p className="mb-6 mt-1 text-sm text-slate-500">
+                Accepted internships ka course content yahan milega.
+              </p>
+              {applicationCards.filter(
+                (a) => a.internship && ['accepted', 'enrolled', 'completed'].includes(a.status)
+              ).length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {applicationCards
+                    .filter((a) => a.internship && ['accepted', 'enrolled', 'completed'].includes(a.status))
+                    .map((a) => (
+                      <div key={a.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 className="text-lg font-black text-slate-900">{a.internship.title}</h3>
+                        <p className="mt-1 text-sm text-slate-500">{a.internship.duration}</p>
+                        <button
+                          onClick={() => setOpenCourse(a.internship)}
+                          className="mt-5 w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
+                        >
+                          Open Course
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
+                  <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
+                  <h3 className="mt-3 font-bold text-slate-900">Koi course unlock nahi hua</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Jab admin tumhari application accept karega, course yahan dikhega.
+                  </p>
+                </div>
+              )}
+            </div>
+          )
         )}
 
         {dashboardTab === 'browse' && (

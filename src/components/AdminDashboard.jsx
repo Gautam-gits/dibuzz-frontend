@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CertificateManager } from './CertificateManager';
+import { ContentManager } from './ContentManager';
 /* ─── Toast ─────────────────────────────────────────────────── */
 function Toast({ toasts, remove }) {
   if (!toasts.length) return null;
@@ -148,6 +149,7 @@ export function AdminDashboard({
   const [editInt, setEditInt] = useState(null);
   const [editCrs, setEditCrs] = useState(null);
   const [editFaq, setEditFaq] = useState(null);
+  const [contentInt, setContentInt] = useState(null);
 
   /* add-internship form */
   const blankInt = {
@@ -460,6 +462,7 @@ export function AdminDashboard({
       `}</style>
 
       <Toast toasts={toasts} remove={remove} />
+      {contentInt && <ContentManager internship={contentInt} onClose={() => setContentInt(null)} />}
       {confirm && <Confirm msg={confirm.msg} onOk={confirm.onOk} onCancel={() => setConfirm(null)} />}
 
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
@@ -602,6 +605,10 @@ export function AdminDashboard({
                       </div>
                     </div>
                     <div className="flex gap-2 p-3 bg-slate-50 border-t border-slate-100">
+                      <button onClick={() => setContentInt(item)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all cursor-pointer">
+                        <BookOpen className="w-3.5 h-3.5" /> Content
+                      </button>
                       <button onClick={() => setEditInt({ ...item, skills: Array.isArray(item.skills) ? item.skills.join(', ') : (item.skills || '') })}
                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-violet-50 hover:text-violet-700 text-slate-600 text-xs font-bold transition-all cursor-pointer">
                         <Edit3 className="w-3.5 h-3.5" /> Edit
@@ -739,7 +746,7 @@ export function AdminDashboard({
                           ) : (
                             <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-xs font-semibold text-slate-500">
                               {application.status === 'accepted'
-                                ? 'Accepted — payment setup will come next.'
+                                ? 'Accepted — student can now open the course content.'
                                 : 'Application decision has been recorded.'}
                             </p>
                           )}
