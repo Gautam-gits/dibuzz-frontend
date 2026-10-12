@@ -1,6 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* DIBUZZ design tokens (Phase 1 visual system) */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --color-brand: #0a6fd6;        /* primary buttons, links */
+  --color-brand-hover: #075bb3;
+  --color-brand-accent: #00a4eb; /* logo cyan, small accents */
+  --color-navy: #06234b;         /* text, headings */
+  --color-sidebar: #0b2145;      /* My Learning sidebar */
+  --color-page: #f5f8fd;         /* page background */
+  --color-soft: #eaf2fd;         /* chips, tags */
+  --color-line: #dbe4f0;         /* borders */
+  --color-muted: #5b6b82;        /* secondary text */
+  --color-ok: #0f7a55;  --color-ok-bg: #e6f6ee;
+  --color-warn: #8a4b08; --color-warn-bg: #fff3e0;
+  --color-bad: #b3261e; --color-bad-bg: #fdecea;
+  --radius-card: 20px; --radius-control: 12px;
+}
+
+/* Keep anchored sections clear of the sticky header */
+section[id] {
+  scroll-margin-top: 80px;
+}
+
 :root {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color-scheme: light;
@@ -154,4 +177,32 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     background: #ffffff !important;
     color: #0f172a !important;
   }
+}
+
+
+/* DIBUZZ motion: small, calm animations. All of them switch off for people who prefer reduced motion. */
+@keyframes fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes word-in { from { opacity: 0; transform: translateY(0.55em); } to { opacity: 1; transform: none; } }
+@keyframes grow-bar { from { width: 0; } to { width: 62%; } }
+@keyframes blob { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(34px, -24px) scale(1.12); } }
+
+.anim-fade-up { animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-float { animation: float-y 6s ease-in-out infinite; }
+.anim-float-slow { animation: float-y 8s ease-in-out infinite; animation-delay: -3s; }
+.anim-marquee { animation: marquee 38s linear infinite; }
+.anim-word { animation: word-in 0.5s ease both; }
+.anim-grow { width: 62%; animation: grow-bar 1.8s 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-blob { animation: blob 14s ease-in-out infinite; }
+
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal.in { opacity: 1; transform: none; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up, .anim-float, .anim-float-slow, .anim-marquee, .anim-word, .anim-grow, .anim-blob { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

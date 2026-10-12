@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { SiteHeader } from './components/SiteHeader';
+import { SiteFooter } from './components/SiteFooter';
+import { PageLoading, AccessPanel, NotFound } from './components/PageStates';
+import { ProgramsPage } from './components/ProgramsPage';
+import { ProgramDetailPage } from './components/ProgramDetailPage';
+import { HomePage } from './components/HomePage';
+import { ServicesPage } from './components/ServicesPage';
+import { AboutPage } from './components/AboutPage';
+import { ContactPage } from './components/ContactPage';
 import { Hero } from './components/Hero';
 import { CourseExplorer } from './components/CourseExplorer';
 import { CourseDetailModal } from './components/CourseDetailModal';
@@ -9,7 +18,6 @@ import { AuthModal } from './components/AuthModal';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AboutSection } from './components/AboutSection';
-import { Footer } from './components/Footer';
 import { InternshipSection } from './components/InternshipSection';
 import { HomeSections } from './components/HomeSections';
 import { LandingPage } from './components/LandingPage';
@@ -24,6 +32,47 @@ import {
   INITIAL_INTERNSHIPS,
   TESTIMONIALS
 } from './data/mockData';
+
+// Every page has a real address (URL). Old "tab" names still work inside the code.
+const TAB_PATHS = {
+  landing: '/',
+  services: '/services',
+  home: '/programs',
+  courses: '/programs',
+  internships: '/programs',
+  verify: '/verify',
+  about: '/about',
+  contact: '/contact',
+  login: '/login',
+  dashboard: '/dashboard',
+  admin: '/admin'
+};
+
+const PATH_TABS = {
+  '/': 'landing',
+  '/services': 'services',
+  '/programs': 'home',
+  '/verify': 'verify',
+  '/about': 'about',
+  '/contact': 'contact',
+  '/login': 'login',
+  '/dashboard': 'dashboard',
+  '/admin': 'admin'
+};
+
+const PAGE_TITLES = {
+  landing: 'DIBUZZ DIGITAL PRIVATE LIMITED | Digital services & learning programs',
+  services: 'Services | DIBUZZ',
+  home: 'Programs | DIBUZZ',
+  verify: 'Verify Certificate | DIBUZZ',
+  about: 'About | DIBUZZ',
+  contact: 'Contact | DIBUZZ',
+  program: 'Program | DIBUZZ',
+  login: 'Sign in | DIBUZZ',
+  dashboard: 'My Learning | DIBUZZ',
+  admin: 'DIBUZZ Admin',
+  notfound: 'Page not found | DIBUZZ'
+};
 
 export default function App() {
   const [companyInfo, setCompanyInfo] = useState(() => {
@@ -78,9 +127,11 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState('CONNECTING'); // 'CONNECTED' | 'FALLBACK'
 
   // UI state
-  const [activeTab, setActiveTab] = useState('landing');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const cleanPath = location.pathname.replace(/\/+$/, '') || '/';
+  const activeTab = PATH_TABS[cleanPath] || (cleanPath.startsWith('/programs/') ? 'program' : 'notfound');
+  const [authReady, setAuthReady] = useState(false);
 
   // Modals state
   const [detailCourse, setDetailCourse] = useState(null);
@@ -88,13 +139,13 @@ export default function App() {
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
   const [showSqlModal, setShowSqlModal] = useState(false);
 
-  // History & Navigation State Management (Fixes Browser & Mobile Back Button)
+  // Navigation: every page has a real URL (react-router)
   const handleTabChange = (tabName) => {
     if (tabName === 'admin' && currentUser?.role !== 'admin') {
       if (!currentUser) {
         setAuthModal({ isOpen: true, mode: 'login' });
       } else {
-        setActiveTab('dashboard');
+        navigate('/dashboard');
       }
       return;
     }
@@ -104,74 +155,28 @@ export default function App() {
       return;
     }
 
-    if (activeTab !== tabName) {
-      window.history.pushState({ tab: tabName }, '', `#${tabName}`);
-      setActiveTab(tabName);
-    }
+    navigate(TAB_PATHS[tabName] || '/');
   };
 
-  const handleSelectCourse = (course) => {
-    if (course) {
-      window.history.pushState({ tab: activeTab, modal: 'course', courseId: course.id }, '', `#course-${course.id}`);
-    }
-    setDetailCourse(course);
-  };
+  const handleSelectCourse = (course) => setDetailCourse(course);
+  const handleOpenAuthModal = (mode = 'login') => setAuthModal({ isOpen: true, mode });
+  const handleOpenPaymentModal = (course) => setPaymentCourse(course);
 
-  const handleOpenAuthModal = (mode = 'login') => {
-    window.history.pushState({ tab: activeTab, modal: 'auth', mode }, '', `#auth-${mode}`);
-    setAuthModal({ isOpen: true, mode });
-  };
-
-  const handleOpenPaymentModal = (course) => {
-    if (course) {
-      window.history.pushState({ tab: activeTab, modal: 'payment', courseId: course.id }, '', `#payment-${course.id}`);
-    }
-    setPaymentCourse(course);
-  };
-
-  const handleToggleMobileMenu = (isOpen) => {
-    if (isOpen) {
-      window.history.pushState({ tab: activeTab, modal: 'drawer' }, '', `#drawer`);
-    }
-    setMobileMenuOpen(isOpen);
-  };
-
-  // Sync browser & mobile hardware back button (popstate event listener)
+  // Scroll to the top (or to #section) when the page changes, and set the page title
   useEffect(() => {
-    if (!window.history.state) {
-      window.history.replaceState({ tab: 'landing' }, '', '#landing');
+    const target = location.hash ? location.hash.slice(1) : '';
+    const element = target ? document.getElementById(target) : null;
+    if (element) {
+      element.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
     }
+  }, [cleanPath, location.hash]);
 
-    const handlePopState = (e) => {
-      // Priority 1: Close top active modal if open
-      if (authModal.isOpen) {
-        setAuthModal({ isOpen: false, mode: 'login' });
-        return;
-      }
-      if (paymentCourse) {
-        setPaymentCourse(null);
-        return;
-      }
-      if (detailCourse) {
-        setDetailCourse(null);
-        return;
-      }
-      if (mobileMenuOpen) {
-        setMobileMenuOpen(false);
-        return;
-      }
-
-      // Priority 2: Restore tab state from history
-      if (e.state && e.state.tab) {
-        setActiveTab(e.state.tab);
-      } else {
-        setActiveTab('landing');
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [authModal.isOpen, paymentCourse, detailCourse, mobileMenuOpen]);
+  useEffect(() => {
+    if (activeTab === 'program') return; // the program page sets its own title
+    document.title = PAGE_TITLES[activeTab] || PAGE_TITLES.landing;
+  }, [activeTab]);
 
   const fetchData = async () => {
     try {
@@ -203,9 +208,11 @@ export default function App() {
         description: i.description,
         image: i.image,
         paymentRequired: Boolean(i.payment_required),
+        approvalRequired: i.approval_required !== false,
         feeAmount: Number(i.fee_amount || 0),
         currency: i.currency || 'INR',
-        lastDateToApply: i.last_date || i.lastDateToApply || '2026'
+        lastDateToApply: i.last_date || i.lastDateToApply || '2026',
+        isActive: i.is_active !== false
       })));
 
       const { data: dbProfiles } = await supabase.from('profiles').select('*').order('id', { ascending: false });
@@ -338,12 +345,16 @@ export default function App() {
 
   useEffect(() => {
     const restoreSession = async () => {
-      const { data } = await supabase.auth.getSession();
+      try {
+        const { data } = await supabase.auth.getSession();
 
-      if (data.session?.user) {
-        await loadSignedInUser(data.session.user);
-      } else {
-        setCurrentUser(null);
+        if (data.session?.user) {
+          await loadSignedInUser(data.session.user);
+        } else {
+          setCurrentUser(null);
+        }
+      } finally {
+        setAuthReady(true);
       }
     };
 
@@ -385,7 +396,7 @@ export default function App() {
     }
 
     setAuthModal({ isOpen: false, mode: 'login' });
-    setActiveTab(user.role === 'admin' ? 'admin' : 'dashboard');
+    navigate(user.role === 'admin' ? '/admin' : '/dashboard');
 
     return { success: true };
   };
@@ -447,7 +458,7 @@ export default function App() {
     }
 
     setAuthModal({ isOpen: false, mode: 'login' });
-    setActiveTab('dashboard');
+    navigate('/dashboard');
 
     return { success: true };
   };
@@ -457,7 +468,7 @@ export default function App() {
     setCurrentUser(null);
     setUsers([]);
     localStorage.removeItem('dibuzz_current_user');
-    setActiveTab('home');
+    navigate('/');
   };
 
   const handleEnrollTrigger = (course) => {
@@ -696,66 +707,38 @@ export default function App() {
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
 
       {/* Navigation Header */}
-      {activeTab !== 'landing' && (
-        <Navbar
-          currentUser={currentUser}
-          activeTab={activeTab}
-          setActiveTab={handleTabChange}
-          openAuthModal={handleOpenAuthModal}
-          logout={handleLogout}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={handleToggleMobileMenu}
-          companyInfo={companyInfo}
-        />
-      )}
+      <SiteHeader
+        currentUser={currentUser}
+        openAuthModal={handleOpenAuthModal}
+        logout={handleLogout}
+      />
 
       {/* Main Page Content */}
       <main className="flex-1">
         {activeTab === 'landing' && (
-          <LandingPage setActiveTab={handleTabChange} companyInfo={companyInfo} />
+          <HomePage internships={internships} loading={dbStatus === 'CONNECTING'} />
         )}
+
+        {activeTab === 'services' && <ServicesPage />}
+
+        {activeTab === 'contact' && <ContactPage companyInfo={companyInfo} />}
 
         {activeTab === 'home' && (
-          <>
-            <Hero
-              setActiveTab={handleTabChange}
-              onOpenAuthModal={handleOpenAuthModal}
-              companyInfo={companyInfo}
-              courses={courses}
-              internships={internships}
-              users={users}
-              transactions={transactions}
-            />
-
-            <InternshipSection
-              companyInfo={companyInfo}
-              internships={internships}
-              currentUser={currentUser}
-              onOpenAuthModal={handleOpenAuthModal}
-            />
-          </>
-        )}
-
-
-
-        {activeTab === 'courses' && (
-          <InternshipSection
-            companyInfo={companyInfo}
+          <ProgramsPage
             internships={internships}
+            loading={dbStatus === 'CONNECTING'}
             currentUser={currentUser}
             onOpenAuthModal={handleOpenAuthModal}
           />
         )}
 
-        {activeTab === 'internships' && (
-          <InternshipSection
-            companyInfo={companyInfo}
+        {activeTab === 'program' && (
+          <ProgramDetailPage
+            slug={cleanPath.slice('/programs/'.length)}
             internships={internships}
+            loading={dbStatus === 'CONNECTING'}
             currentUser={currentUser}
             onOpenAuthModal={handleOpenAuthModal}
-            onNavigateToAdmin={() => handleTabChange('admin')}
           />
         )}
 
@@ -764,7 +747,7 @@ export default function App() {
         )}
 
         {activeTab === 'about' && (
-          <AboutSection companyInfo={companyInfo} />
+          <AboutPage companyInfo={companyInfo} />
         )}
 
         {activeTab === 'dashboard' && currentUser && (
@@ -809,12 +792,32 @@ export default function App() {
             refreshData={fetchData}
           />
         )}
+
+        {activeTab === 'login' && (
+          currentUser
+            ? <AccessPanel title="You are signed in" text="Open My Learning to continue." actionLabel="Open My Learning" onAction={() => handleTabChange(currentUser.role === 'admin' ? 'admin' : 'dashboard')} />
+            : <AccessPanel title="Sign in to DIBUZZ" text="Sign in or create an account to apply for programs and track your learning." actionLabel="Sign in" onAction={() => handleOpenAuthModal('login')} />
+        )}
+
+        {activeTab === 'dashboard' && !currentUser && (
+          authReady
+            ? <AccessPanel title="Sign in to open My Learning" text="Your programs, progress and certificates are available after you sign in." actionLabel="Sign in" onAction={() => handleOpenAuthModal('login')} />
+            : <PageLoading />
+        )}
+
+        {activeTab === 'admin' && currentUser?.role !== 'admin' && (
+          !authReady
+            ? <PageLoading />
+            : (currentUser
+              ? <AccessPanel title="Admin access only" text="This area is only for DIBUZZ administrators." actionLabel="Go to My Learning" onAction={() => handleTabChange('dashboard')} />
+              : <AccessPanel title="Admin sign in" text="Sign in with your administrator account to continue." actionLabel="Sign in" onAction={() => handleOpenAuthModal('login')} />)
+        )}
+
+        {activeTab === 'notfound' && <NotFound />}
       </main>
 
       {/* Footer */}
-      {activeTab !== 'landing' && (
-        <Footer companyInfo={companyInfo} setActiveTab={handleTabChange} />
-      )}
+      <SiteFooter companyInfo={companyInfo} />
 
       {/* Course Detail Modal */}
       {detailCourse && (

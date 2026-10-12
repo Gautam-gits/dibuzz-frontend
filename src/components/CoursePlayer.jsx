@@ -75,7 +75,7 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
   };
 
   if (loading) {
-    return <div className="flex items-center gap-2 p-10 text-sm font-semibold text-slate-500"><LoaderCircle className="h-5 w-5 animate-spin" /> Loading course…</div>;
+    return <div className="flex items-center gap-2 p-10 text-sm font-semibold text-slate-500"><LoaderCircle className="h-5 w-5 animate-spin" /> Loading lessons…</div>;
   }
 
   const embed = current ? getEmbedUrl(current.url) : null;
@@ -83,7 +83,7 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
   return (
     <div className="mx-auto max-w-6xl">
       <button onClick={onBack} className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900">
-        <ArrowLeft className="h-4 w-4" /> Back to My Courses
+        <ArrowLeft className="h-4 w-4" /> Back to My Learning
       </button>
 
       <div className="mb-5 rounded-3xl border border-slate-200 bg-white p-5">
@@ -96,7 +96,7 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
         </div>
         {percent === 100 && flat.length > 0 && (
           <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
-            🎉 Course complete! Certificate admin issue karega — "Certificates" tab check karte raho.
+            🎉 Program complete! The DIBUZZ team will review your progress and issue your certificate. Check the Certificates section.
           </p>
         )}
       </div>
@@ -105,7 +105,7 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
 
       {flat.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
-          Admin ne abhi tak content add nahi kiya. Thodi der baad dekho.
+          No lessons have been added yet. Please check back soon.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

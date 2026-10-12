@@ -145,7 +145,7 @@ function SectionHeading({ eyebrow, title, description }) {
   );
 }
 
-export function LandingPage({ setActiveTab, companyInfo }) {
+export function LandingPage({ setActiveTab, companyInfo, embedded = false }) {
   const [selectedService, setSelectedService] = useState('');
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
@@ -209,6 +209,7 @@ export function LandingPage({ setActiveTab, companyInfo }) {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f7fbff] font-sans text-slate-900 selection:bg-sky-200">
+      {!embedded && (
       <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-100/80 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <button onClick={() => scrollToSection('top')} className="flex min-w-0 items-center gap-2.5 text-left">
@@ -246,9 +247,10 @@ export function LandingPage({ setActiveTab, companyInfo }) {
           </button>
         </div>
       </header>
+      )}
 
       <main id="top">
-        <section className="relative flex min-h-[690px] items-center overflow-hidden pt-[76px] sm:min-h-[720px]">
+        <section className={`relative flex min-h-[690px] items-center overflow-hidden ${embedded ? 'pt-6' : 'pt-[76px]'} sm:min-h-[720px]`}>
           <div className="absolute inset-0 bg-slate-50">
             <img
               src="/hero-background-v2.png"

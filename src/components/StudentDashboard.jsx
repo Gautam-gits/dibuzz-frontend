@@ -1,60 +1,150 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Award,
-  BookOpen,
-  Briefcase,
-  ClipboardList,
-  Compass,
-  Download,
-  LayoutDashboard,
-  LoaderCircle,
-  RefreshCw,
-  ShieldCheck,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Award, BookOpen, ClipboardList, Download, GraduationCap, LoaderCircle, RefreshCw, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { InternshipSection } from './InternshipSection';
 import { CoursePlayer } from './CoursePlayer';
+import { Badge, Button, Card, EmptyState, Spinner } from './ui';
+import { STATUS_LABEL, STATUS_TONE } from './ApplyFlow';
+import { programImage, programSlug } from '../lib/programs';
 
 const formatDate = (value) => {
   if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+const TYPE_LABEL = { video: 'Video', pdf: 'PDF', link: 'Link', notes: 'Notes' };
+
+const NAV = [
+  { id: 'learning', label: 'My Learning', icon: BookOpen },
+  { id: 'applications', label: 'Applications', icon: ClipboardList },
+  { id: 'certificates', label: 'Certificates', icon: Award },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
+// A student can open the content when enrolled/completed, or accepted into a free program.
+const hasAccess = (application) =>
+  ['enrolled', 'completed'].includes(application.status) ||
+  (application.status === 'accepted' && !application.internship?.paymentRequired);
+
+const waitingForEnrollment = (application) =>
+  application.status === 'accepted' && Boolean(application.internship?.paymentRequired);
+
+function buildProgress(program, modules, resources, doneSet) {
+  const programModules = modules.filter((module) => String(module.internship_id) === String(program.id));
+  const flat = [];
+  programModules.forEach((module, moduleIndex) => {
+    resources
+      .filter((resource) => resource.module_id === module.id)
+      .forEach((resource) => flat.push({ ...resource, moduleIndex, moduleTitle: module.title }));
   });
-};
+  const total = flat.length;
+  const done = flat.filter((resource) => doneSet.has(resource.id)).length;
+  const next = flat.find((resource) => !doneSet.has(resource.id)) || null;
+  const focus = next || flat[flat.length - 1] || null;
+  return {
+    total,
+    done,
+    percent: total ? Math.round((done / total) * 100) : 0,
+    next,
+    moduleCount: programModules.length,
+    moduleLabel: focus ? `Module ${focus.moduleIndex + 1} of ${programModules.length} · ${focus.moduleTitle}` : '',
+  };
+}
 
-const STATUS_STYLE = {
-  applied: 'bg-sky-100 text-sky-700',
-  accepted: 'bg-emerald-100 text-emerald-700',
-  rejected: 'bg-red-100 text-red-700',
-  payment_pending: 'bg-amber-100 text-amber-700',
-  enrolled: 'bg-violet-100 text-violet-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-slate-100 text-slate-700',
-};
+function LearningCard({ application, progress, loading, onContinue }) {
+  const program = application.internship;
+  const image = programImage(program);
+  const waiting = waitingForEnrollment(application);
+  const complete = progress && progress.total > 0 && progress.percent === 100;
 
-const STATUS_LABEL = {
-  applied: 'Applied',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  payment_pending: 'Payment Pending',
-  enrolled: 'Enrolled',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
+  let statusLabel = 'Not started';
+  let tone = 'brand';
+  if (waiting) {
+    statusLabel = 'Accepted';
+    tone = 'ok';
+  } else if (complete) {
+    statusLabel = 'Completed';
+    tone = 'ok';
+  } else if (progress && progress.done > 0) {
+    statusLabel = 'In progress';
+  }
 
-export function StudentDashboard({
-  currentUser,
-  internships = [],
-  companyInfo,
-  onOpenAuthModal,
-}) {
-  const [dashboardTab, setDashboardTab] = useState('overview');
+  return (
+    <article className="grid overflow-hidden rounded-card border border-line bg-white md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <div className="relative min-h-44 bg-gradient-to-br from-soft to-white">
+        {image ? (
+          <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <GraduationCap className="absolute inset-0 m-auto h-12 w-12 text-navy/70" aria-hidden="true" />
+        )}
+      </div>
+
+      <div className="p-6 sm:p-8">
+        <Badge tone={tone} className="px-4 py-2">{statusLabel}</Badge>
+        <h3 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-navy">{program.title}</h3>
+
+        {waiting ? (
+          <p className="mt-4 text-sm leading-relaxed text-muted">
+            Your application is accepted. The DIBUZZ team will confirm your enrollment next, and your lessons will open here.
+          </p>
+        ) : loading ? (
+          <div className="mt-5 space-y-3">
+            <div className="h-3 w-3/4 animate-pulse rounded bg-soft" />
+            <div className="h-2 w-full animate-pulse rounded bg-soft" />
+          </div>
+        ) : progress && progress.total > 0 ? (
+          <>
+            <p className="mt-2 text-sm text-muted">{progress.moduleLabel}</p>
+            <div
+              className="mt-4 h-2.5 overflow-hidden rounded-full bg-soft"
+              role="progressbar"
+              aria-valuenow={progress.percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${program.title} progress`}
+            >
+              <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${progress.percent}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {progress.percent}% complete · {progress.done} of {progress.total} lessons
+            </p>
+
+            {progress.next ? (
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-control border border-line p-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted">Next</p>
+                  <p className="mt-1 truncate font-bold text-navy">{progress.next.title}</p>
+                  <p className="text-xs text-muted">{TYPE_LABEL[progress.next.type] || 'Lesson'}</p>
+                </div>
+                <Button onClick={() => onContinue(program)}>Continue learning</Button>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                <p className="text-sm font-semibold text-ok">
+                  You completed every lesson. The DIBUZZ team will review your progress and issue your certificate.
+                </p>
+                <Button variant="secondary" onClick={() => onContinue(program)}>Review lessons</Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="mt-4 text-sm leading-relaxed text-muted">
+            No lessons have been added to this program yet. Please check back soon.
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+export function StudentDashboard({ currentUser, internships = [] }) {
+  const [tab, setTab] = useState('learning');
   const [openCourse, setOpenCourse] = useState(null);
   const [applications, setApplications] = useState([]);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
+  const [progressMap, setProgressMap] = useState({});
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressTick, setProgressTick] = useState(0);
 
   const [certificates, setCertificates] = useState([]);
   const [certLoading, setCertLoading] = useState(false);
@@ -65,40 +155,27 @@ export function StudentDashboard({
 
   const loadApplications = useCallback(async () => {
     if (!userId) return;
-
     setApplicationsLoading(true);
-
     const { data, error } = await supabase
       .from('internship_applications')
       .select('*')
       .eq('student_id', userId)
       .order('applied_at', { ascending: false });
-
-    if (!error) {
-      setApplications(data || []);
-    }
-
+    if (!error) setApplications(data || []);
     setApplicationsLoading(false);
   }, [userId]);
 
   const loadCertificates = useCallback(async () => {
     if (!userId) return;
-
     setCertLoading(true);
     setCertError('');
-
     const { data, error } = await supabase
       .from('certificates')
       .select('*')
       .eq('student_id', userId)
       .order('created_at', { ascending: false });
-
-    if (error) {
-      setCertError(error.message);
-    } else {
-      setCertificates(data || []);
-    }
-
+    if (error) setCertError(error.message);
+    else setCertificates(data || []);
     setCertLoading(false);
   }, [userId]);
 
@@ -107,45 +184,81 @@ export function StudentDashboard({
     loadCertificates();
   }, [loadApplications, loadCertificates]);
 
-  const applicationCards = useMemo(() => {
-    return applications.map((application) => ({
-      ...application,
-      internship: internships.find(
-        (item) => String(item.id) === String(application.internship_id)
-      ),
-    }));
-  }, [applications, internships]);
+  const applicationCards = useMemo(
+    () =>
+      applications.map((application) => ({
+        ...application,
+        internship: internships.find((item) => String(item.id) === String(application.internship_id)),
+      })),
+    [applications, internships]
+  );
 
-  const activeInternshipCount = applicationCards.filter((application) =>
-    ['accepted', 'payment_pending', 'enrolled'].includes(application.status)
-  ).length;
+  const learning = useMemo(
+    () => applicationCards.filter((application) => application.internship && (hasAccess(application) || waitingForEnrollment(application))),
+    [applicationCards]
+  );
 
-  const completedCount = certificates.filter(
-    (certificate) => certificate.status === 'issued'
-  ).length;
+  const learningIdsKey = learning.filter(hasAccess).map((application) => application.internship_id).join(',');
+
+  // Progress for every program the student can open
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      const ids = learningIdsKey ? learningIdsKey.split(',').map(Number) : [];
+      if (!userId || ids.length === 0) {
+        if (active) {
+          setProgressMap({});
+          setProgressLoading(false);
+        }
+        return;
+      }
+      setProgressLoading(true);
+      const { data: modules } = await supabase.from('internship_modules').select('*').in('internship_id', ids).order('sort_order');
+      const moduleIds = (modules || []).map((module) => module.id);
+      let resources = [];
+      let doneIds = [];
+      if (moduleIds.length) {
+        const result = await supabase.from('internship_resources').select('*').in('module_id', moduleIds).order('sort_order');
+        resources = result.data || [];
+        if (resources.length) {
+          const progress = await supabase
+            .from('resource_progress')
+            .select('resource_id')
+            .eq('student_id', userId)
+            .in('resource_id', resources.map((resource) => resource.id));
+          doneIds = (progress.data || []).map((row) => row.resource_id);
+        }
+      }
+      if (!active) return;
+      const doneSet = new Set(doneIds);
+      const next = {};
+      ids.forEach((id) => {
+        next[id] = buildProgress({ id }, modules || [], resources, doneSet);
+      });
+      setProgressMap(next);
+      setProgressLoading(false);
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [learningIdsKey, userId, progressTick]);
 
   const downloadCertificate = async (certificate) => {
     if (!certificate.file_path) {
-      setCertError('PDF file is not available for this certificate yet.');
+      setCertError('The PDF file is not available for this certificate yet.');
       return;
     }
-
     setDownloadingId(certificate.id);
     setCertError('');
-
     const { data, error } = await supabase.storage
       .from('certificates')
-      .createSignedUrl(certificate.file_path, 120, {
-        download: `${certificate.certificate_number}.pdf`,
-      });
-
+      .createSignedUrl(certificate.file_path, 120, { download: `${certificate.certificate_number}.pdf` });
     setDownloadingId(null);
-
     if (error) {
       setCertError(error.message);
       return;
     }
-
     const link = document.createElement('a');
     link.href = data.signedUrl;
     link.target = '_blank';
@@ -157,481 +270,273 @@ export function StudentDashboard({
 
   if (!currentUser) return null;
 
-  const SidebarItem = ({ icon: Icon, label, tabId }) => (
-    <button
-      onClick={() => setDashboardTab(tabId)}
-      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all ${
-        dashboardTab === tabId
-          ? 'bg-sky-600 font-bold text-white shadow-md'
-          : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-      }`}
-    >
-      <Icon
-        className={`h-5 w-5 ${
-          dashboardTab === tabId ? 'text-white' : 'text-slate-400'
-        }`}
-      />
-      <span>{label}</span>
-    </button>
-  );
+  const firstName = currentUser.name?.split(' ')[0] || 'Student';
+  const goTo = (id) => {
+    setOpenCourse(null);
+    setTab(id);
+  };
 
   return (
-    <div
-      className="flex min-h-[calc(100vh-80px)] w-full flex-col bg-slate-50 md:flex-row"
-      style={{
-        marginTop: '-2rem',
-        marginBottom: '-2rem',
-        marginLeft: 'calc(-50vw + 50%)',
-        marginRight: 'calc(-50vw + 50%)',
-      }}
-    >
-      <aside className="flex w-full shrink-0 flex-col gap-2 border-r border-slate-200 bg-white p-4 md:sticky md:top-[80px] md:h-[calc(100vh-80px)] md:w-64">
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-black text-sky-700">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-page md:flex-row">
+      {/* Sidebar (desktop) */}
+      <aside className="hidden w-64 shrink-0 bg-sidebar p-5 md:sticky md:top-16 md:flex md:h-[calc(100vh-4rem)] md:flex-col">
+        <div className="mb-6 flex items-center gap-3 rounded-card bg-white/5 p-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-extrabold text-white">
             {currentUser.name?.charAt(0)?.toUpperCase() || 'S'}
           </div>
-
           <div className="min-w-0">
-            <h3 className="truncate font-bold text-slate-900">
-              {currentUser.name}
-            </h3>
-            <p className="truncate text-xs text-slate-500">{currentUser.email}</p>
+            <p className="truncate font-bold text-white">{currentUser.name}</p>
+            <p className="truncate text-xs text-white/60">{currentUser.email}</p>
           </div>
         </div>
-
-        <p className="mb-2 mt-2 px-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-          My Internship Portal
-        </p>
-
-        <SidebarItem
-          icon={LayoutDashboard}
-          label="Overview"
-          tabId="overview"
-        />
-        <SidebarItem
-          icon={BookOpen}
-          label="My Courses"
-          tabId="courses"
-        />
-        <SidebarItem
-          icon={ClipboardList}
-          label="My Applications"
-          tabId="applications"
-        />
-        <SidebarItem
-          icon={Award}
-          label="Certificates"
-          tabId="certificates"
-        />
-
-        <p className="mb-2 mt-6 px-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-          Discover
-        </p>
-
-        <SidebarItem
-          icon={Compass}
-          label="Browse Internships"
-          tabId="browse"
-        />
+        <nav aria-label="My Learning sections" className="space-y-1">
+          {NAV.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => goTo(item.id)}
+              aria-current={tab === item.id ? 'page' : undefined}
+              className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control px-4 text-left text-sm font-semibold transition-colors ${
+                tab === item.id ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <item.icon className="h-5 w-5" aria-hidden="true" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </aside>
 
-      <main className="w-full flex-1 overflow-y-auto p-4 md:p-8">
-        {dashboardTab === 'overview' && (
-          <div className="mx-auto max-w-5xl space-y-8">
-            <div>
-              <h1 className="font-heading text-3xl font-black text-slate-900">
-                Welcome back, {currentUser.name?.split(' ')[0] || 'Student'}!
-              </h1>
-              <p className="mt-1 font-medium text-slate-500">
-                Track your internship applications and learning journey here.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100">
-                  <ClipboardList className="h-6 w-6 text-sky-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">
-                    {applications.length}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-500">
-                    Applications
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100">
-                  <Briefcase className="h-6 w-6 text-violet-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">
-                    {activeInternshipCount}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-500">
-                    Active Internships
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
-                  <Award className="h-6 w-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-slate-900">
-                    {completedCount}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-500">
-                    Certificates
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Recent Applications
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Your latest internship application updates.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setDashboardTab('applications')}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
-                >
-                  View All
-                </button>
-              </div>
-
-              {applicationsLoading ? (
-                <div className="flex items-center gap-2 py-8 text-sm font-semibold text-slate-500">
-                  <LoaderCircle className="h-5 w-5 animate-spin" />
-                  Loading applications...
-                </div>
-              ) : applicationCards.length > 0 ? (
-                <div className="space-y-3">
-                  {applicationCards.slice(0, 3).map((application) => (
-                    <div
-                      key={application.id}
-                      className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:items-center"
-                    >
-                      <div>
-                        <h3 className="font-bold text-slate-900">
-                          {application.internship?.title || 'Internship Program'}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Applied on {formatDate(application.applied_at)}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`w-fit rounded-full px-3 py-1 text-[11px] font-black ${
-                          STATUS_STYLE[application.status] || STATUS_STYLE.applied
-                        }`}
-                      >
-                        {STATUS_LABEL[application.status] || 'Applied'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center">
-                  <Briefcase className="mx-auto h-10 w-10 text-slate-300" />
-                  <h3 className="mt-3 font-bold text-slate-900">
-                    No applications yet
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Browse available internships and apply for the one you like.
-                  </p>
-                  <button
-                    onClick={() => setDashboardTab('browse')}
-                    className="mt-5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
-                  >
-                    Browse Internships
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {dashboardTab === 'applications' && (
-          <div className="mx-auto max-w-5xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">
-                  My Applications
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Track every internship application in one place.
-                </p>
-              </div>
-
-              <button
-                onClick={loadApplications}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </button>
-            </div>
-
-            {applicationsLoading ? (
-              <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 text-sm font-semibold text-slate-500">
-                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
-                Loading applications...
-              </div>
-            ) : applicationCards.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {applicationCards.map((application) => (
-                  <div
-                    key={application.id}
-                    className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-black text-slate-900">
-                          {application.internship?.title || 'Internship Program'}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {application.internship?.duration || 'Duration to be announced'}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`rounded-full px-3 py-1 text-[10px] font-black ${
-                          STATUS_STYLE[application.status] || STATUS_STYLE.applied
-                        }`}
-                      >
-                        {STATUS_LABEL[application.status] || 'Applied'}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
-                      <p className="text-slate-600">
-                        <span className="font-semibold text-slate-500">
-                          Application No:
-                        </span>{' '}
-                        <span className="font-mono font-bold text-sky-700">
-                          {application.application_number || '—'}
-                        </span>
-                      </p>
-
-                      <p className="text-slate-600">
-                        <span className="font-semibold text-slate-500">
-                          Applied:
-                        </span>{' '}
-                        {formatDate(application.applied_at)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
-                <h3 className="text-lg font-bold text-slate-900">
-                  No internship applications yet
-                </h3>
-                <button
-                  onClick={() => setDashboardTab('browse')}
-                  className="mt-5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
-                >
-                  Browse Internships
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {dashboardTab === 'courses' && (
-          openCourse ? (
+      <main className="min-w-0 flex-1 px-4 pb-28 pt-8 sm:px-8 md:pb-12">
+        <div className="mx-auto max-w-5xl">
+          {openCourse ? (
             <CoursePlayer
               internship={openCourse}
               currentUser={currentUser}
-              onBack={() => setOpenCourse(null)}
+              onBack={() => {
+                setOpenCourse(null);
+                setProgressTick((value) => value + 1);
+              }}
             />
           ) : (
-            <div className="mx-auto max-w-5xl">
-              <h2 className="text-2xl font-black text-slate-900">My Courses</h2>
-              <p className="mb-6 mt-1 text-sm text-slate-500">
-                Accepted internships ka course content yahan milega.
-              </p>
-              {applicationCards.filter(
-                (a) => a.internship && ['accepted', 'enrolled', 'completed'].includes(a.status)
-              ).length > 0 ? (
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  {applicationCards
-                    .filter((a) => a.internship && ['accepted', 'enrolled', 'completed'].includes(a.status))
-                    .map((a) => (
-                      <div key={a.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <h3 className="text-lg font-black text-slate-900">{a.internship.title}</h3>
-                        <p className="mt-1 text-sm text-slate-500">{a.internship.duration}</p>
-                        <button
-                          onClick={() => setOpenCourse(a.internship)}
-                          className="mt-5 w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
-                        >
-                          Open Course
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
-                  <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
-                  <h3 className="mt-3 font-bold text-slate-900">Koi course unlock nahi hua</h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Jab admin tumhari application accept karega, course yahan dikhega.
-                  </p>
-                </div>
-              )}
-            </div>
-          )
-        )}
-
-        {dashboardTab === 'browse' && (
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-slate-200 bg-white">
-            <InternshipSection
-              companyInfo={companyInfo}
-              internships={internships}
-              currentUser={currentUser}
-              onOpenAuthModal={onOpenAuthModal}
-            />
-          </div>
-        )}
-
-        {dashboardTab === 'certificates' && (
-          <div className="mx-auto max-w-5xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">
-                  My Certificates
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Download certificates issued by the admin.
-                </p>
-              </div>
-
-              <button
-                onClick={loadCertificates}
-                disabled={certLoading}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${certLoading ? 'animate-spin' : ''}`}
-                />
-                Refresh
-              </button>
-            </div>
-
-            {certError && (
-              <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-                {certError}
-              </div>
-            )}
-
-            {certLoading && certificates.length === 0 ? (
-              <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 text-sm font-semibold text-slate-500">
-                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
-                Loading certificates...
-              </div>
-            ) : certificates.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {certificates.map((certificate) => {
-                  const isValid = certificate.status === 'issued';
-
-                  return (
-                    <div
-                      key={certificate.id}
-                      className={`flex flex-col rounded-3xl border bg-white p-6 shadow-sm ${
-                        isValid ? 'border-slate-200' : 'border-red-200 opacity-80'
-                      }`}
-                    >
-                      <div className="mb-4 flex items-start justify-between gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100">
-                          <Award className="h-6 w-6 text-emerald-600" />
-                        </div>
-
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
-                            isValid
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {isValid ? 'Valid' : 'Revoked'}
-                        </span>
-                      </div>
-
-                      <h3 className="text-lg font-bold leading-snug text-slate-900">
-                        {certificate.program_name}
-                      </h3>
-
-                      <p className="mt-1 text-xs font-bold uppercase text-slate-400">
-                        {certificate.certificate_type === 'course'
-                          ? 'Course Completion'
-                          : 'Internship Completion'}
-                      </p>
-
-                      <div className="mt-4 space-y-1.5 text-sm text-slate-600">
-                        <p>
-                          <span className="font-semibold text-slate-500">
-                            Certificate No:
-                          </span>{' '}
-                          <span className="font-mono font-bold text-sky-700">
-                            {certificate.certificate_number}
-                          </span>
-                        </p>
-
-                        <p>
-                          <span className="font-semibold text-slate-500">
-                            Issued on:
-                          </span>{' '}
-                          {formatDate(certificate.issued_date)}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => downloadCertificate(certificate)}
-                        disabled={
-                          !isValid ||
-                          !certificate.file_path ||
-                          downloadingId === certificate.id
-                        }
-                        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 font-bold text-white transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                      >
-                        {downloadingId === certificate.id ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-
-                        {isValid ? 'Download PDF' : 'Certificate Revoked'}
-                      </button>
+            <>
+              {tab === 'learning' && (
+                <section>
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted">My Learning</p>
+                      <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
+                        Welcome back, {firstName}
+                      </h1>
+                      <p className="mt-1 text-muted">Continue from where you left off.</p>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center">
-                <Award className="mx-auto h-12 w-12 text-slate-300" />
-                <h3 className="mt-4 text-lg font-bold text-slate-900">
-                  No Certificates Yet
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Complete an internship program to earn your certificate.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                    <Button as={Link} to="/programs" variant="secondary">Browse programs</Button>
+                  </div>
+
+                  <div className="mt-8 space-y-6">
+                    {applicationsLoading ? (
+                      <div className="flex justify-center py-16"><Spinner /></div>
+                    ) : learning.length > 0 ? (
+                      learning.map((application) => (
+                        <LearningCard
+                          key={application.id}
+                          application={application}
+                          progress={progressMap[application.internship_id]}
+                          loading={progressLoading && hasAccess(application)}
+                          onContinue={setOpenCourse}
+                        />
+                      ))
+                    ) : (
+                      <EmptyState
+                        title="No programs yet"
+                        text="When you join a program, or your application is accepted, it will appear here."
+                        action={<Button as={Link} to="/programs">Explore programs</Button>}
+                      />
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {tab === 'applications' && (
+                <section>
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl font-extrabold tracking-tight text-navy">Applications</h1>
+                      <p className="mt-1 text-muted">Track every program you have applied to.</p>
+                    </div>
+                    <Button variant="secondary" onClick={loadApplications}>
+                      <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
+                    </Button>
+                  </div>
+
+                  <div className="mt-8">
+                    {applicationsLoading ? (
+                      <div className="flex justify-center py-16"><Spinner /></div>
+                    ) : applicationCards.length > 0 ? (
+                      <div className="grid gap-5 md:grid-cols-2">
+                        {applicationCards.map((application) => (
+                          <Card key={application.id}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="text-lg font-extrabold leading-snug text-navy">
+                                  {application.internship ? (
+                                    <Link to={`/programs/${programSlug(application.internship)}`} className="hover:text-brand">
+                                      {application.internship.title}
+                                    </Link>
+                                  ) : 'Program'}
+                                </h3>
+                                <p className="mt-1 text-sm text-muted">{application.internship?.duration || ''}</p>
+                              </div>
+                              <Badge tone={STATUS_TONE[application.status] || 'brand'}>
+                                {STATUS_LABEL[application.status] || 'Applied'}
+                              </Badge>
+                            </div>
+                            <dl className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
+                              <div className="flex justify-between gap-4">
+                                <dt className="text-muted">Application number</dt>
+                                <dd className="font-mono font-bold text-brand">{application.application_number || '—'}</dd>
+                              </div>
+                              <div className="flex justify-between gap-4">
+                                <dt className="text-muted">Applied on</dt>
+                                <dd className="font-semibold text-navy">{formatDate(application.applied_at)}</dd>
+                              </div>
+                            </dl>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="No applications yet"
+                        text="Programs you apply to will be tracked here."
+                        action={<Button as={Link} to="/programs">Explore programs</Button>}
+                      />
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {tab === 'certificates' && (
+                <section>
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl font-extrabold tracking-tight text-navy">Certificates</h1>
+                      <p className="mt-1 text-muted">Download the verified completion certificates issued to you.</p>
+                    </div>
+                    <Button variant="secondary" onClick={loadCertificates} disabled={certLoading}>
+                      <RefreshCw className={`h-4 w-4 ${certLoading ? 'animate-spin' : ''}`} aria-hidden="true" /> Refresh
+                    </Button>
+                  </div>
+
+                  {certError && (
+                    <div role="alert" className="mt-6 rounded-control bg-bad-bg p-3 text-sm font-semibold text-bad">{certError}</div>
+                  )}
+
+                  <div className="mt-8">
+                    {certLoading && certificates.length === 0 ? (
+                      <div className="flex justify-center py-16"><Spinner /></div>
+                    ) : certificates.length > 0 ? (
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        {certificates.map((certificate) => {
+                          const valid = certificate.status === 'issued';
+                          return (
+                            <Card key={certificate.id} className={`flex flex-col ${valid ? '' : 'opacity-80'}`}>
+                              <div className="mb-4 flex items-start justify-between gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-control bg-ok-bg">
+                                  <Award className="h-6 w-6 text-ok" aria-hidden="true" />
+                                </div>
+                                <Badge tone={valid ? 'ok' : 'bad'}>{valid ? 'Valid' : 'Revoked'}</Badge>
+                              </div>
+                              <h3 className="text-lg font-extrabold leading-snug text-navy">{certificate.program_name}</h3>
+                              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted">
+                                {certificate.certificate_type === 'course' ? 'Course completion' : 'Program completion'}
+                              </p>
+                              <dl className="mt-4 space-y-1.5 text-sm">
+                                <div className="flex justify-between gap-4">
+                                  <dt className="text-muted">Certificate number</dt>
+                                  <dd className="font-mono font-bold text-brand">{certificate.certificate_number}</dd>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <dt className="text-muted">Issued on</dt>
+                                  <dd className="font-semibold text-navy">{formatDate(certificate.issued_date)}</dd>
+                                </div>
+                              </dl>
+                              <Button
+                                className="mt-6 w-full"
+                                onClick={() => downloadCertificate(certificate)}
+                                disabled={!valid || !certificate.file_path || downloadingId === certificate.id}
+                              >
+                                {downloadingId === certificate.id ? (
+                                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                ) : (
+                                  <Download className="h-4 w-4" aria-hidden="true" />
+                                )}
+                                {valid ? 'Download PDF' : 'Certificate revoked'}
+                              </Button>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="No certificates yet"
+                        text="Complete a program to earn your verified completion certificate."
+                      />
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {tab === 'profile' && (
+                <section>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-navy">Profile</h1>
+                  <p className="mt-1 text-muted">The details saved with your account.</p>
+                  <Card className="mt-8">
+                    <dl className="divide-y divide-line text-sm">
+                      {[
+                        ['Full name', currentUser.name],
+                        ['Email', currentUser.email],
+                        ['Phone', currentUser.phone],
+                        ['College', currentUser.collegeName],
+                        ['Course', currentUser.course],
+                        ['Branch', currentUser.branch],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between gap-4 py-3">
+                          <dt className="text-muted">{label}</dt>
+                          <dd className="text-right font-semibold text-navy">{value || '—'}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </Card>
+                  <p className="mt-4 text-sm text-muted">
+                    To change these details, write to <a className="font-semibold text-brand" href="mailto:support@dibuzz.in">support@dibuzz.in</a>.
+                  </p>
+                </section>
+              )}
+            </>
+          )}
+        </div>
       </main>
+
+      {/* Bottom navigation (phones) */}
+      <nav
+        aria-label="My Learning sections"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-white/10 bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {NAV.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => goTo(item.id)}
+            aria-current={tab === item.id ? 'page' : undefined}
+            className={`flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+              tab === item.id ? 'text-white' : 'text-white/60'
+            }`}
+          >
+            <item.icon className="h-5 w-5" aria-hidden="true" />
+            {item.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

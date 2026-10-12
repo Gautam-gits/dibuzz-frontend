@@ -11,7 +11,7 @@ export function ContentManager({ internship, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newModule, setNewModule] = useState('');
-  const [form, setForm] = useState({ moduleId: '', title: '', type: 'video', url: '', body: '' });
+  const [form, setForm] = useState({ moduleId: '', title: '', type: 'video', url: '', body: '', preview: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,9 +62,16 @@ export function ContentManager({ internship, onClose }) {
       url: form.type === 'notes' ? null : form.url.trim(),
       body: form.type === 'notes' ? form.body.trim() : null,
       sort_order: count + 1,
+      is_preview: Boolean(form.preview),
     });
     if (err) setError(err.message);
     else { setForm({ ...form, title: '', url: '', body: '' }); load(); }
+  };
+
+  const toggleDemo = async (r) => {
+    setError('');
+    const { error: err } = await supabase.from('internship_resources').update({ is_preview: !r.is_preview }).eq('id', r.id);
+    if (err) setError(err.message); else load();
   };
 
   const deleteResource = async (r) => {
@@ -120,6 +127,11 @@ export function ContentManager({ internship, onClose }) {
             ) : (
               <input className={INP} placeholder="Paste YouTube / Drive / website link" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} />
             )}
+            <label className="flex items-start gap-2 text-xs font-semibold text-slate-700">
+              <input type="checkbox" checked={form.preview} onChange={e => setForm({ ...form, preview: e.target.checked })} className="mt-0.5" />
+              <span>Free demo — everyone can watch this lesson on the program page, even without joining.
+                <span className="block font-normal text-slate-500">Tip: use an Unlisted YouTube video. Drive links must be set to "Anyone with the link".</span></span>
+            </label>
             <button className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700">Add Resource</button>
           </form>
         )}
@@ -128,7 +140,7 @@ export function ContentManager({ internship, onClose }) {
         {loading ? (
           <div className="flex items-center gap-2 py-6 text-sm font-semibold text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" /> Loading…</div>
         ) : modules.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Abhi koi module nahi hai. Upar se pehla module add karo.</p>
+          <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No modules yet. Add the first module above.</p>
         ) : (
           <div className="space-y-4">
             {modules.map((m, mi) => {
@@ -149,8 +161,10 @@ export function ContentManager({ internship, onClose }) {
                       <span className="min-w-0 truncate font-semibold text-slate-700">
                         <span className="mr-2 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-violet-700">{r.type}</span>
                         {r.title}
+                        {r.is_preview && <span className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">Free demo</span>}
                       </span>
                       <div className="flex shrink-0 gap-1">
+                        <button onClick={() => toggleDemo(r)} className="rounded-lg px-2 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-50">{r.is_preview ? 'Remove demo' : 'Make demo'}</button>
                         <button onClick={() => move('internship_resources', list, ri, -1)} className="rounded-lg p-1 hover:bg-slate-100"><ChevronUp className="h-3.5 w-3.5" /></button>
                         <button onClick={() => move('internship_resources', list, ri, 1)} className="rounded-lg p-1 hover:bg-slate-100"><ChevronDown className="h-3.5 w-3.5" /></button>
                         <button onClick={() => deleteResource(r)} className="rounded-lg p-1 text-red-500 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>

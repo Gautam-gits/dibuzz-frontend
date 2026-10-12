@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   LayoutDashboard, Award, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
-  X, RefreshCw, Database, Zap, ClipboardList, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus,
+  X, RefreshCw, Database, Zap, ClipboardList, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus, UsersRound,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CertificateManager } from './CertificateManager';
 import { ContentManager } from './ContentManager';
+import { TeamManager } from './TeamManager';
 /* ─── Toast ─────────────────────────────────────────────────── */
 function Toast({ toasts, remove }) {
   if (!toasts.length) return null;
@@ -166,6 +167,7 @@ export function AdminDashboard({
     skills: '',
     paymentRequired: false,
     feeAmount: 0,
+    approvalRequired: true,
   };
   const [iForm, setIForm] = useState(blankInt);
 
@@ -243,7 +245,9 @@ export function AdminDashboard({
       add(
         status === 'accepted'
           ? 'Application accepted successfully.'
-          : 'Application rejected.',
+          : status === 'enrolled'
+            ? 'Student marked as enrolled.'
+            : 'Application rejected.',
         'success'
       );
     }
@@ -269,6 +273,7 @@ export function AdminDashboard({
       image: iForm.image,
       skills,
       payment_required: iForm.paymentRequired,
+      approval_required: iForm.approvalRequired !== false,
       fee_amount: iForm.paymentRequired
         ? Number(iForm.feeAmount || 0)
         : 0,
@@ -301,6 +306,7 @@ export function AdminDashboard({
       image: editInt.image,
       skills,
       payment_required: Boolean(editInt.paymentRequired),
+      approval_required: editInt.approvalRequired !== false,
       fee_amount: editInt.paymentRequired
         ? Number(editInt.feeAmount || 0)
         : 0,
@@ -448,6 +454,7 @@ export function AdminDashboard({
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
     { id: 'faqs', label: 'FAQs', icon: HelpCircle },
     { id: 'certificates', label: 'Certificates', icon: Award },
+    { id: 'team', label: 'Team', icon: UsersRound },
   ];
 
   return (
@@ -744,11 +751,28 @@ export function AdminDashboard({
                               </button>
                             </>
                           ) : (
-                            <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-xs font-semibold text-slate-500">
-                              {application.status === 'accepted'
-                                ? 'Accepted — student can now open the course content.'
-                                : 'Application decision has been recorded.'}
-                            </p>
+                            application.status === 'accepted' && internship?.paymentRequired ? (
+                              <div className="w-full space-y-2">
+                                <p className="rounded-xl bg-amber-50 py-2.5 text-center text-xs font-semibold text-amber-700">
+                                  Accepted — paid program. Mark enrolled once payment is received.
+                                </p>
+                                <button
+                                  onClick={() => updateApplicationStatus(application.id, 'enrolled')}
+                                  disabled={busy}
+                                  className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
+                                >
+                                  Mark enrolled
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-xs font-semibold text-slate-500">
+                                {application.status === 'accepted'
+                                  ? 'Accepted — student can now open the course content.'
+                                  : application.status === 'enrolled'
+                                    ? 'Enrolled — student can open the course content.'
+                                    : 'Application decision has been recorded.'}
+                              </p>
+                            )
                           )}
                         </div>
                       </div>
@@ -849,6 +873,9 @@ export function AdminDashboard({
           )}
           {tab === 'certificates' && (
             <CertificateManager />
+          )}
+          {tab === 'team' && (
+            <TeamManager />
           )}
           {/* ── FAQS ── */}
           {tab === 'faqs' && (
@@ -1010,6 +1037,27 @@ export function AdminDashboard({
                   />
                 </Field>
               )}
+
+              <Field label="How do students join?">
+                <select
+                  value={(editInt ? editInt.approvalRequired !== false : iForm.approvalRequired !== false) ? 'approval' : 'instant'}
+                  onChange={(e) => {
+                    const approvalRequired = e.target.value === 'approval';
+                    if (editInt) {
+                      setEditInt((previous) => ({ ...previous, approvalRequired }));
+                    } else {
+                      setIForm((previous) => ({ ...previous, approvalRequired }));
+                    }
+                  }}
+                  className={INP}
+                >
+                  <option value="approval">Needs approval (student applies)</option>
+                  <option value="instant">No approval (student enrolls directly)</option>
+                </select>
+                {(editInt ? editInt.paymentRequired : iForm.paymentRequired) && (editInt ? editInt.approvalRequired === false : iForm.approvalRequired === false) && (
+                  <p className="mt-1 text-[11px] text-amber-600">Paid + no approval: students will pay online. Online payment opens later, so for now the page shows "Payments opening soon".</p>
+                )}
+              </Field>
             </div>
             <Field label="Skills (comma separated)">
               <input type="text" placeholder="React, Node, Express" value={editInt ? (Array.isArray(editInt.skills) ? editInt.skills.join(', ') : editInt.skills) : iForm.skills} onChange={e => editInt ? setEditInt(p => ({ ...p, skills: e.target.value })) : setIForm(p => ({ ...p, skills: e.target.value }))} className={INP} />
