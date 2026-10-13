@@ -31,7 +31,7 @@ export function SiteFooter({ companyInfo = {} }) {
             <h4 className="mb-4 text-sm font-extrabold uppercase tracking-wider text-sky-300">Explore</h4>
             <ul className="space-y-2.5">
               <li><Link to="/services" className={linkClass}>Services</Link></li>
-              <li><Link to="/programs" className={linkClass}>Programs</Link></li>
+              <li><Link to="/programs" className={linkClass}>Internships</Link></li>
               <li><Link to="/about" className={linkClass}>About</Link></li>
               <li><Link to="/contact" className={linkClass}>Contact</Link></li>
               <li><Link to="/verify" className={linkClass}>Verify Certificate</Link></li>

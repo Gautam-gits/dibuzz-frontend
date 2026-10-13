@@ -6,7 +6,7 @@ import { Button } from './ui';
 const LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/services', label: 'Services' },
-  { to: '/programs', label: 'Programs' },
+  { to: '/programs', label: 'Internships' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
 ];
@@ -43,8 +43,8 @@ export function SiteHeader({ currentUser, openAuthModal, logout }) {
         </button>
         {renderLogo('min-w-0')}
         <Button as={Link} to="/programs" onClick={close} className="ml-auto min-h-10 shrink-0 px-3 text-xs sm:px-5 sm:text-sm">
-          <span className="max-[359px]:hidden">Explore Programs</span>
-          <span className="min-[360px]:hidden">Programs</span>
+          <span className="max-[359px]:hidden">Internships</span>
+          <span className="min-[360px]:hidden">Internships</span>
         </Button>
       </div>
 
@@ -69,7 +69,7 @@ export function SiteHeader({ currentUser, openAuthModal, logout }) {
           ) : (
             <Button variant="ghost" onClick={() => openAuthModal('login')}>Sign in</Button>
           )}
-          <Button as={Link} to="/programs">Explore Programs</Button>
+          <Button as={Link} to="/programs">Internships</Button>
         </div>
       </div>
 

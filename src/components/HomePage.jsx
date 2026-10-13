@@ -142,7 +142,7 @@ export function HomePage({ internships = [], loading = false }) {
                 Start a project
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </Button>
-              <Button as={Link} to="/programs" variant="secondary" className="px-6 hover:-translate-y-0.5">Explore programs</Button>
+              <Button as={Link} to="/programs" variant="secondary" className="px-6 hover:-translate-y-0.5">Internship</Button>
             </div>
           </div>
 
@@ -202,10 +202,10 @@ export function HomePage({ internships = [], loading = false }) {
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
             <Reveal className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h2 className="text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">Featured programs</h2>
-                <p className="mt-2 text-muted">Practical programs for students, with verified completion certificates.</p>
+                <h2 className="text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">Featured Internships</h2>
+                <p className="mt-2 text-muted">Practical internships for students, with verified completion certificates.</p>
               </div>
-              <Button as={Link} to="/programs" variant="secondary">View all programs</Button>
+              <Button as={Link} to="/programs" variant="secondary">View all Internships</Button>
             </Reveal>
             {loading && featured.length === 0 ? (
               <div className="flex justify-center py-16"><Spinner /></div>
