@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, BookOpen, ClipboardList, Download, GraduationCap, LoaderCircle, RefreshCw, User } from 'lucide-react';
+import { ArrowRight, Award, BookOpen, CalendarDays, CheckCircle2, ClipboardList, Download, GraduationCap, LoaderCircle, Menu, PlayCircle, RefreshCw, Sparkles, User, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CoursePlayer } from './CoursePlayer';
-import { Badge, Button, Card, EmptyState, Spinner } from './ui';
 import { STATUS_LABEL, STATUS_TONE } from './ApplyFlow';
 import { programImage, programSlug } from '../lib/programs';
+import { Badge, Button, Card, EmptyState, Spinner } from '@/ui';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -70,57 +70,56 @@ function LearningCard({ application, progress, loading, onContinue }) {
   }
 
   return (
-    <article className="grid overflow-hidden rounded-card border border-line bg-white md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <div className="relative min-h-44 bg-gradient-to-br from-soft to-white">
+    <article className="student-course-card group grid overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/90 shadow-[0_18px_60px_rgba(15,35,75,0.08)] md:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
+      <div className="relative min-h-52 overflow-hidden bg-gradient-to-br from-[#dbeafe] via-[#eff6ff] to-white">
         {image ? (
-          <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
         ) : (
-          <GraduationCap className="absolute inset-0 m-auto h-12 w-12 text-navy/70" aria-hidden="true" />
+          <GraduationCap className="absolute inset-0 m-auto h-14 w-14 text-blue-700/60" aria-hidden="true" />
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06234b]/50 via-transparent to-transparent" />
+        <div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-extrabold text-[#06234b] shadow-sm backdrop-blur">
+          <BookOpen className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
+          {progress?.moduleCount || 0} modules
+        </div>
       </div>
 
       <div className="p-6 sm:p-8">
-        <Badge tone={tone} className="px-4 py-2">{statusLabel}</Badge>
-        <h3 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-navy">{program.title}</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Badge tone={tone} className="px-3 py-1.5">{statusLabel}</Badge>
+          {progress?.total > 0 && <span className="text-sm font-bold text-[#5b6b82]">{progress.done}/{progress.total} lessons</span>}
+        </div>
+        <h3 className="mt-4 font-heading text-2xl font-extrabold leading-tight tracking-tight text-[#06234b] sm:text-3xl">{program.title}</h3>
 
         {waiting ? (
-          <p className="mt-4 text-sm leading-relaxed text-muted">
+          <p className="mt-4 text-sm leading-relaxed text-neutral-500">
             Your application is accepted. The DIBUZZ team will confirm your enrollment next, and your lessons will open here.
           </p>
         ) : loading ? (
           <div className="mt-5 space-y-3">
-            <div className="h-3 w-3/4 animate-pulse rounded bg-soft" />
-            <div className="h-2 w-full animate-pulse rounded bg-soft" />
+            <div className="h-3 w-3/4 animate-pulse rounded bg-blue-100" />
+            <div className="h-2 w-full animate-pulse rounded bg-blue-100" />
           </div>
         ) : progress && progress.total > 0 ? (
           <>
-            <p className="mt-2 text-sm text-muted">{progress.moduleLabel}</p>
-            <div
-              className="mt-4 h-2.5 overflow-hidden rounded-full bg-soft"
-              role="progressbar"
-              aria-valuenow={progress.percent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`${program.title} progress`}
-            >
-              <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${progress.percent}%` }} />
+            <p className="mt-2 text-sm font-medium text-[#5b6b82]">{progress.moduleLabel}</p>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-blue-100">
+              <div className="student-progress-bar h-full rounded-full bg-gradient-to-r from-[#0a6fd6] to-[#00a4eb]" style={{ width: `${progress.percent}%` }} />
             </div>
-            <p className="mt-2 text-xs text-muted">
-              {progress.percent}% complete · {progress.done} of {progress.total} lessons
-            </p>
+            <p className="mt-2 text-xs font-bold text-[#5b6b82]">{progress.percent}% complete</p>
 
             {progress.next ? (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-control border border-line p-4">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted">Next</p>
-                  <p className="mt-1 truncate font-bold text-navy">{progress.next.title}</p>
-                  <p className="text-xs text-muted">{TYPE_LABEL[progress.next.type] || 'Lesson'}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Up next</p>
+                  <p className="mt-1 truncate font-bold text-[#06234b]">{progress.next.title}</p>
+                  <p className="text-xs text-[#5b6b82]">{TYPE_LABEL[progress.next.type] || 'Lesson'}</p>
                 </div>
-                <Button onClick={() => onContinue(program)}>Continue learning</Button>
+                <Button className="bg-[#0a6fd6] text-white shadow-lg shadow-blue-200 hover:bg-[#075bb3]" onClick={() => onContinue(program)}><PlayCircle className="h-4 w-4" /> Continue</Button>
               </div>
             ) : (
               <div className="mt-5 space-y-3">
-                <p className="text-sm font-semibold text-ok">
+                <p className="text-sm font-semibold text-green-600">
                   You completed every lesson. The DIBUZZ team will review your progress and issue your certificate.
                 </p>
                 <Button variant="secondary" onClick={() => onContinue(program)}>Review lessons</Button>
@@ -128,7 +127,7 @@ function LearningCard({ application, progress, loading, onContinue }) {
             )}
           </>
         ) : (
-          <p className="mt-4 text-sm leading-relaxed text-muted">
+          <p className="mt-4 text-sm leading-relaxed text-neutral-500">
             No lessons have been added to this program yet. Please check back soon.
           </p>
         )}
@@ -139,6 +138,7 @@ function LearningCard({ application, progress, loading, onContinue }) {
 
 export function StudentDashboard({ currentUser, internships = [] }) {
   const [tab, setTab] = useState('learning');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openCourse, setOpenCourse] = useState(null);
   const [applications, setApplications] = useState([]);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
@@ -197,6 +197,13 @@ export function StudentDashboard({ currentUser, internships = [] }) {
     () => applicationCards.filter((application) => application.internship && (hasAccess(application) || waitingForEnrollment(application))),
     [applicationCards]
   );
+
+  const learningStats = useMemo(() => {
+    const active = learning.filter(hasAccess);
+    const completed = active.filter((application) => progressMap[application.internship_id]?.percent === 100).length;
+    const lessonsDone = active.reduce((sum, application) => sum + (progressMap[application.internship_id]?.done || 0), 0);
+    return { active: active.length, completed, lessonsDone };
+  }, [learning, progressMap]);
 
   const learningIdsKey = learning.filter(hasAccess).map((application) => application.internship_id).join(',');
 
@@ -274,14 +281,29 @@ export function StudentDashboard({ currentUser, internships = [] }) {
   const goTo = (id) => {
     setOpenCourse(null);
     setTab(id);
+    setSidebarOpen(false);
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-page md:flex-row">
-      {/* Sidebar (desktop) */}
-      <aside className="hidden w-64 shrink-0 bg-sidebar p-5 md:sticky md:top-16 md:flex md:h-[calc(100vh-4rem)] md:flex-col">
-        <div className="mb-6 flex items-center gap-3 rounded-card bg-white/5 p-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-extrabold text-white">
+    <div className="student-dashboard flex min-h-[calc(100vh-4rem)] flex-col bg-[#f5f8fd] md:flex-row">
+      {/* Desktop navigation drawer */}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen((open) => !open)}
+        aria-label={sidebarOpen ? 'Close dashboard navigation' : 'Open dashboard navigation'}
+        aria-expanded={sidebarOpen}
+        className={`fixed top-20 z-[110] hidden h-11 w-11 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#06234b] shadow-lg shadow-blue-950/10 transition-all duration-300 hover:bg-blue-50 md:flex ${sidebarOpen ? 'left-[19rem]' : 'left-6'}`}
+      >
+        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+      {sidebarOpen && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-[90] hidden bg-[#06234b]/35 backdrop-blur-sm md:block" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`fixed inset-y-0 left-0 z-[100] hidden w-72 bg-[#06234b] p-5 pt-8 shadow-[14px_0_45px_rgba(6,35,75,0.28)] transition-transform duration-300 ease-out md:flex md:flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="mb-8 px-3 pt-2">
+          <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-blue-200">DIBUZZ</p>
+          <p className="mt-1 font-heading text-xl font-extrabold text-white">Student space</p>
+        </div>
+        <div className="mb-7 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00a4eb] to-[#0a6fd6] text-lg font-extrabold text-white shadow-lg shadow-blue-950/30">
             {currentUser.name?.charAt(0)?.toUpperCase() || 'S'}
           </div>
           <div className="min-w-0">
@@ -289,15 +311,15 @@ export function StudentDashboard({ currentUser, internships = [] }) {
             <p className="truncate text-xs text-white/60">{currentUser.email}</p>
           </div>
         </div>
-        <nav aria-label="My Learning sections" className="space-y-1">
+        <nav aria-label="My Learning sections" className="space-y-2">
           {NAV.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => goTo(item.id)}
               aria-current={tab === item.id ? 'page' : undefined}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control px-4 text-left text-sm font-semibold transition-colors ${
-                tab === item.id ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+              className={`flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-2xl px-4 text-left text-sm font-bold transition-all duration-200 ${
+                tab === item.id ? 'bg-white text-[#06234b] shadow-lg shadow-blue-950/20' : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
               }`}
             >
               <item.icon className="h-5 w-5" aria-hidden="true" />
@@ -305,10 +327,17 @@ export function StudentDashboard({ currentUser, internships = [] }) {
             </button>
           ))}
         </nav>
+        <div className="mt-auto rounded-2xl border border-blue-300/20 bg-gradient-to-br from-blue-500/25 to-cyan-400/10 p-4">
+          <Sparkles className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+          <p className="mt-3 text-sm font-extrabold text-white">Keep the momentum</p>
+          <p className="mt-1 text-xs leading-relaxed text-blue-100/75">Every completed lesson moves you closer to your certificate.</p>
+        </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-4 pb-28 pt-8 sm:px-8 md:pb-12">
-        <div className="mx-auto max-w-5xl">
+      <main className="relative min-w-0 flex-1 overflow-hidden px-4 pb-28 pt-6 sm:px-8 md:pb-12 md:pt-8">
+        <div className="student-orb student-orb-one" aria-hidden="true" />
+        <div className="student-orb student-orb-two" aria-hidden="true" />
+        <div className="relative mx-auto max-w-6xl">
           {openCourse ? (
             <CoursePlayer
               internship={openCourse}
@@ -322,15 +351,28 @@ export function StudentDashboard({ currentUser, internships = [] }) {
             <>
               {tab === 'learning' && (
                 <section>
-                  <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted">My Learning</p>
-                      <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
-                        Welcome back, {firstName}
-                      </h1>
-                      <p className="mt-1 text-muted">Continue from where you left off.</p>
+                  <div className="student-hero overflow-hidden rounded-[2rem] bg-[#06234b] px-6 py-7 text-white shadow-[0_20px_70px_rgba(6,35,75,0.22)] sm:px-9 sm:py-9">
+                    <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-200"><Sparkles className="h-4 w-4" /> My learning</div>
+                        <h1 className="mt-3 font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">Welcome back, {firstName}.</h1>
+                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-blue-100 sm:text-base">Pick up a lesson, track your progress, and turn small wins into real momentum.</p>
+                      </div>
+                      <Button as={Link} to="/programs" variant="secondary" className="border-white/20 bg-white text-[#06234b] hover:bg-blue-50">Browse programs <ArrowRight className="h-4 w-4" /></Button>
                     </div>
-                    <Button as={Link} to="/programs" variant="secondary">Browse programs</Button>
+                    <div className="relative z-10 mt-7 grid gap-3 sm:grid-cols-3">
+                      {[
+                        ['Active programs', learningStats.active, BookOpen],
+                        ['Lessons completed', learningStats.lessonsDone, CheckCircle2],
+                        ['Certificates earned', learningStats.completed, Award],
+                      ].map(([label, value, Icon]) => (
+                        <div key={label} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                          <Icon className="h-4 w-4 text-cyan-200" aria-hidden="true" />
+                          <p className="mt-3 text-2xl font-extrabold">{value}</p>
+                          <p className="mt-0.5 text-xs font-semibold text-blue-100/75">{label}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="mt-8 space-y-6">
@@ -361,8 +403,9 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                 <section>
                   <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                      <h1 className="text-3xl font-extrabold tracking-tight text-navy">Applications</h1>
-                      <p className="mt-1 text-muted">Track every program you have applied to.</p>
+                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Your journey</p>
+                      <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-[#06234b]">Applications</h1>
+                      <p className="mt-1 text-[#5b6b82]">Track every program you have applied to.</p>
                     </div>
                     <Button variant="secondary" onClick={loadApplications}>
                       <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
@@ -375,30 +418,30 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                     ) : applicationCards.length > 0 ? (
                       <div className="grid gap-5 md:grid-cols-2">
                         {applicationCards.map((application) => (
-                          <Card key={application.id}>
+                          <Card key={application.id} className="student-panel group border-white/80 bg-white/90 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <h3 className="text-lg font-extrabold leading-snug text-navy">
+                                <h3 className="text-lg font-extrabold leading-snug text-neutral-900">
                                   {application.internship ? (
-                                    <Link to={`/programs/${programSlug(application.internship)}`} className="hover:text-brand">
+                                    <Link to={`/programs/${programSlug(application.internship)}`} className="hover:text-blue-600">
                                       {application.internship.title}
                                     </Link>
                                   ) : 'Program'}
                                 </h3>
-                                <p className="mt-1 text-sm text-muted">{application.internship?.duration || ''}</p>
+                                <p className="mt-1 text-sm text-neutral-500">{application.internship?.duration || ''}</p>
                               </div>
                               <Badge tone={STATUS_TONE[application.status] || 'brand'}>
                                 {STATUS_LABEL[application.status] || 'Applied'}
                               </Badge>
                             </div>
-                            <dl className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
+                            <dl className="mt-5 space-y-3 border-t border-blue-100 pt-4 text-sm">
                               <div className="flex justify-between gap-4">
-                                <dt className="text-muted">Application number</dt>
-                                <dd className="font-mono font-bold text-brand">{application.application_number || '—'}</dd>
+                                <dt className="text-neutral-500">Application number</dt>
+                                <dd className="font-mono font-bold text-blue-600">{application.application_number || '—'}</dd>
                               </div>
                               <div className="flex justify-between gap-4">
-                                <dt className="text-muted">Applied on</dt>
-                                <dd className="font-semibold text-navy">{formatDate(application.applied_at)}</dd>
+                                <dt className="flex items-center gap-1.5 text-neutral-500"><CalendarDays className="h-3.5 w-3.5" /> Applied on</dt>
+                                <dd className="font-semibold text-neutral-900">{formatDate(application.applied_at)}</dd>
                               </div>
                             </dl>
                           </Card>
@@ -419,8 +462,9 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                 <section>
                   <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                      <h1 className="text-3xl font-extrabold tracking-tight text-navy">Certificates</h1>
-                      <p className="mt-1 text-muted">Download the verified completion certificates issued to you.</p>
+                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Your achievements</p>
+                      <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-[#06234b]">Certificates</h1>
+                      <p className="mt-1 text-[#5b6b82]">Download the verified completion certificates issued to you.</p>
                     </div>
                     <Button variant="secondary" onClick={loadCertificates} disabled={certLoading}>
                       <RefreshCw className={`h-4 w-4 ${certLoading ? 'animate-spin' : ''}`} aria-hidden="true" /> Refresh
@@ -428,7 +472,7 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                   </div>
 
                   {certError && (
-                    <div role="alert" className="mt-6 rounded-control bg-bad-bg p-3 text-sm font-semibold text-bad">{certError}</div>
+                    <div role="alert" className="mt-6 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{certError}</div>
                   )}
 
                   <div className="mt-8">
@@ -439,25 +483,25 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                         {certificates.map((certificate) => {
                           const valid = certificate.status === 'issued';
                           return (
-                            <Card key={certificate.id} className={`flex flex-col ${valid ? '' : 'opacity-80'}`}>
+                            <Card key={certificate.id} className={`student-panel flex flex-col border-white/80 bg-white/90 ${valid ? '' : 'opacity-80'}`}>
                               <div className="mb-4 flex items-start justify-between gap-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-control bg-ok-bg">
-                                  <Award className="h-6 w-6 text-ok" aria-hidden="true" />
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50">
+                                  <Award className="h-6 w-6 text-green-600" aria-hidden="true" />
                                 </div>
                                 <Badge tone={valid ? 'ok' : 'bad'}>{valid ? 'Valid' : 'Revoked'}</Badge>
                               </div>
-                              <h3 className="text-lg font-extrabold leading-snug text-navy">{certificate.program_name}</h3>
-                              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted">
+                              <h3 className="text-lg font-extrabold leading-snug text-neutral-900">{certificate.program_name}</h3>
+                              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-neutral-500">
                                 {certificate.certificate_type === 'course' ? 'Course completion' : 'Program completion'}
                               </p>
                               <dl className="mt-4 space-y-1.5 text-sm">
                                 <div className="flex justify-between gap-4">
-                                  <dt className="text-muted">Certificate number</dt>
-                                  <dd className="font-mono font-bold text-brand">{certificate.certificate_number}</dd>
+                                  <dt className="text-neutral-500">Certificate number</dt>
+                                  <dd className="font-mono font-bold text-blue-600">{certificate.certificate_number}</dd>
                                 </div>
                                 <div className="flex justify-between gap-4">
-                                  <dt className="text-muted">Issued on</dt>
-                                  <dd className="font-semibold text-navy">{formatDate(certificate.issued_date)}</dd>
+                                  <dt className="text-neutral-500">Issued on</dt>
+                                  <dd className="font-semibold text-neutral-900">{formatDate(certificate.issued_date)}</dd>
                                 </div>
                               </dl>
                               <Button
@@ -488,10 +532,11 @@ export function StudentDashboard({ currentUser, internships = [] }) {
 
               {tab === 'profile' && (
                 <section>
-                  <h1 className="text-3xl font-extrabold tracking-tight text-navy">Profile</h1>
-                  <p className="mt-1 text-muted">The details saved with your account.</p>
-                  <Card className="mt-8">
-                    <dl className="divide-y divide-line text-sm">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Account</p>
+                  <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-[#06234b]">Profile</h1>
+                  <p className="mt-1 text-[#5b6b82]">The details saved with your account.</p>
+                  <Card className="student-panel mt-8 border-white/80 bg-white/90">
+                    <dl className="divide-y divide-neutral-200 text-sm">
                       {[
                         ['Full name', currentUser.name],
                         ['Email', currentUser.email],
@@ -501,14 +546,14 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                         ['Branch', currentUser.branch],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between gap-4 py-3">
-                          <dt className="text-muted">{label}</dt>
-                          <dd className="text-right font-semibold text-navy">{value || '—'}</dd>
+                          <dt className="text-neutral-500">{label}</dt>
+                          <dd className="text-right font-semibold text-neutral-900">{value || '—'}</dd>
                         </div>
                       ))}
                     </dl>
                   </Card>
-                  <p className="mt-4 text-sm text-muted">
-                    To change these details, write to <a className="font-semibold text-brand" href="mailto:support@dibuzz.in">support@dibuzz.in</a>.
+                  <p className="mt-4 text-sm text-neutral-500">
+                    To change these details, write to <a className="font-semibold text-blue-600" href="mailto:support@dibuzz.in">support@dibuzz.in</a>.
                   </p>
                 </section>
               )}
@@ -520,7 +565,7 @@ export function StudentDashboard({ currentUser, internships = [] }) {
       {/* Bottom navigation (phones) */}
       <nav
         aria-label="My Learning sections"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-white/10 bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-white/10 bg-[#06234b]/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(6,35,75,0.18)] backdrop-blur md:hidden"
       >
         {NAV.map((item) => (
           <button
@@ -528,10 +573,11 @@ export function StudentDashboard({ currentUser, internships = [] }) {
             type="button"
             onClick={() => goTo(item.id)}
             aria-current={tab === item.id ? 'page' : undefined}
-            className={`flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
-              tab === item.id ? 'text-white' : 'text-white/60'
+            className={`relative flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-bold transition-colors ${
+              tab === item.id ? 'text-white' : 'text-white/55'
             }`}
           >
+            {tab === item.id && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-cyan-300" />}
             <item.icon className="h-5 w-5" aria-hidden="true" />
             {item.label}
           </button>

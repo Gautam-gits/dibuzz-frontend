@@ -8,8 +8,8 @@ export const INITIAL_COMPANY_INFO = {
   phone: "+91 9128458850",
   whatsapp: "+91 9128458850",
   altPhone: "+91 9128458850",
-  email: "contact@dibuzz.in",
-  admissionsEmail: "admissions@dibuzz.in",
+  email: "support@dibuzz.in",
+  admissionsEmail: "support@dibuzz.in",
   address: "511-A, 5th FLOOR, ASHIANA PLAZA, BUDH MARG, PATNA - 800001",
   linkedin: "https://www.linkedin.com/in/dibuzz-digital-private-limited-87a25a426/",
   instagram: "https://www.instagram.com/dibuzzdigital",
@@ -149,21 +149,4 @@ export const INITIAL_INTERNSHIPS = [
   }
 ];
 
-export const INITIAL_COURSES = [];
 export const INITIAL_VERIFIED_CERTIFICATES = [];
-
-// Only authorized Admins (no dummy test users)
-export const INITIAL_USERS = [
-  {
-    id: 101,
-    name: "Mananjay Prasad",
-    email: "mananjayprasad7@gmail.com",
-    password: "Mananjay@2006",
-    role: "admin",
-    joinedDate: "Jan 01, 2025",
-    phone: "+91 9128458850"
-  }
-];
-
-export const INITIAL_TRANSACTIONS = [];
-export const TESTIMONIALS = [];

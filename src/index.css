@@ -195,6 +195,8 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 .anim-word { animation: word-in 0.5s ease both; }
 .anim-grow { width: 62%; animation: grow-bar 1.8s 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .anim-blob { animation: blob 14s ease-in-out infinite; }
+.program-card { animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease; }
+.program-card:hover { transform: translateY(-6px); border-color: #6d94d1; box-shadow: 0 20px 36px rgb(15 39 78 / 12%); }
 
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
 .reveal.in { opacity: 1; transform: none; }
@@ -202,7 +204,85 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Student dashboard: restrained depth and motion, with a no-motion fallback below. */
+@keyframes student-orbit {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(18px, -14px, 0) scale(1.08); }
+}
+
+@keyframes student-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes student-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.student-dashboard {
+  isolation: isolate;
+}
+
+.student-orb {
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(10px);
+  opacity: .55;
+  animation: student-orbit 11s ease-in-out infinite;
+}
+
+.student-orb-one {
+  top: -6rem;
+  right: -4rem;
+  width: 20rem;
+  height: 20rem;
+  background: radial-gradient(circle, rgba(56, 189, 248, .28), rgba(219, 234, 254, 0) 68%);
+}
+
+.student-orb-two {
+  top: 32rem;
+  left: -7rem;
+  width: 17rem;
+  height: 17rem;
+  animation-delay: -5s;
+  background: radial-gradient(circle, rgba(96, 165, 250, .18), rgba(219, 234, 254, 0) 68%);
+}
+
+.student-hero,
+.student-course-card,
+.student-panel {
+  animation: student-enter .55s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.student-hero {
+  position: relative;
+}
+
+.student-hero::after {
+  content: '';
+  position: absolute;
+  right: -4rem;
+  top: -7rem;
+  width: 17rem;
+  height: 17rem;
+  border: 1px solid rgba(186, 230, 253, .2);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2.5rem rgba(186, 230, 253, .05), 0 0 0 5.5rem rgba(186, 230, 253, .035);
+}
+
+.student-course-card { animation-delay: .08s; }
+.student-panel { animation-delay: .06s; }
+
+.student-progress-bar {
+  transform-origin: left;
+  animation: student-progress .8s cubic-bezier(.22, 1, .36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .anim-fade-up, .anim-float, .anim-float-slow, .anim-marquee, .anim-word, .anim-grow, .anim-blob { animation: none; }
+  .anim-fade-up, .anim-float, .anim-float-slow, .anim-marquee, .anim-word, .anim-grow, .anim-blob, .program-card, .student-orb, .student-hero, .student-course-card, .student-panel, .student-progress-bar { animation: none; }
+  .program-card:hover { transform: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }

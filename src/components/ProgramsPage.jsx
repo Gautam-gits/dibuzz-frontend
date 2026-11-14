@@ -5,24 +5,23 @@ import { Badge, Button, EmptyState, Spinner } from './ui';
 import { STATUS_LABEL, STATUS_TONE, useApplyFlow } from './ApplyFlow';
 import { isFree, priceLabel, programImage, programSlug, semesterLabel } from '../lib/programs';
 
-export function ProgramCard({ item, application }) {
+export function ProgramCard({ item, application, index = 0 }) {
   const image = programImage(item);
   const semester = semesterLabel(item);
   const free = isFree(item);
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-card border border-line bg-white transition-shadow hover:shadow-lg hover:shadow-brand/10">
+    <article className="program-card flex flex-col overflow-hidden rounded-card border border-line bg-white" style={{ animationDelay: `${Math.min(index, 5) * 70}ms` }}>
       <Link to={`/programs/${programSlug(item)}`} className="relative block h-40 bg-gradient-to-br from-soft to-white" aria-label={item.title}>
         {image ? (
           <img src={image} alt="" loading="lazy" width="640" height="400" className="h-full w-full object-cover" />
         ) : (
           <GraduationCap className="absolute right-4 top-4 h-6 w-6 text-brand/40" aria-hidden="true" />
         )}
-        {semester && (
-          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-navy shadow-sm">
-            {semester}
-          </span>
-        )}
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-navy shadow-sm">{item.kind || 'internship'}</span>
+          {semester && <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-navy shadow-sm">{semester}</span>}
+        </div>
       </Link>
 
       <div className="flex flex-1 flex-col p-5">
@@ -30,12 +29,12 @@ export function ProgramCard({ item, application }) {
           <Link to={`/programs/${programSlug(item)}`} className="hover:text-brand">{item.title}</Link>
         </h3>
         <p className="mt-2 text-sm text-muted">
-          {[item.duration, item.mode].filter(Boolean).join(' · ')}
+          {item.shortSummary || [item.duration, item.mode].filter(Boolean).join(' · ')}
         </p>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-5">
           <div className="min-w-0">
-            <p className="font-extrabold text-navy">{free ? 'Free program' : priceLabel(item)}</p>
+            <p className="font-extrabold text-navy">{free ? 'Free' : priceLabel(item)}</p>
             {application && (
               <Badge tone={STATUS_TONE[application.status] || 'brand'} className="mt-1">
                 {STATUS_LABEL[application.status] || 'Applied'}
@@ -68,6 +67,8 @@ export function ProgramsPage({ internships = [], loading = false, currentUser, o
     return programs.filter((item) => {
       if (filter === 'free' && !isFree(item)) return false;
       if (filter === 'paid' && isFree(item)) return false;
+      if (filter === 'internship' && item.kind !== 'internship') return false;
+      if (filter === 'course' && item.kind !== 'course') return false;
       if (filter.endsWith('semester') && semesterLabel(item) !== filter) return false;
       if (!text) return true;
       const skills = Array.isArray(item.skills) ? item.skills.join(' ') : '';
@@ -77,6 +78,8 @@ export function ProgramsPage({ internships = [], loading = false, currentUser, o
 
   const chips = [
     { value: 'all', label: 'All programs' },
+    { value: 'internship', label: 'Internships' },
+    { value: 'course', label: 'Courses' },
     ...semesters.map((value) => ({ value, label: value.replace(/^./, (c) => c.toUpperCase()) })),
     { value: 'free', label: 'Free' },
     { value: 'paid', label: 'Paid' },
@@ -141,8 +144,8 @@ export function ProgramsPage({ internships = [], loading = false, currentUser, o
           <div className="flex justify-center py-20"><Spinner /></div>
         ) : visible.length > 0 ? (
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((item) => (
-              <ProgramCard key={item.id} item={item} application={byProgram[item.id]} />
+            {visible.map((item, index) => (
+              <ProgramCard key={item.id} item={item} application={byProgram[item.id]} index={index} />
             ))}
           </div>
         ) : (

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronRight, ExternalLink, GraduationCap, Lock, Play } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { getEmbedUrl, getYouTubeThumb } from '../lib/resourceUtils';
+import { getEmbedUrl, getSafeExternalUrl, getYouTubeThumb } from '../lib/resourceUtils';
 import { Badge, Button, EmptyState, Spinner } from './ui';
 import { STATUS_LABEL, STATUS_TONE, useApplyFlow } from './ApplyFlow';
 import {
@@ -69,6 +69,7 @@ function useOutline(programId) {
 
 function DemoPlayer({ lesson }) {
   const embed = getEmbedUrl(lesson.url);
+  const resourceUrl = getSafeExternalUrl(lesson.url);
   return (
     <div id="demo-player" className="mb-5 overflow-hidden rounded-card border border-line bg-white">
       {embed ? (
@@ -83,12 +84,14 @@ function DemoPlayer({ lesson }) {
         </div>
       ) : lesson.type === 'notes' ? (
         <div className="whitespace-pre-wrap p-5 text-sm leading-relaxed text-navy">{lesson.body}</div>
-      ) : (
+      ) : resourceUrl ? (
         <div className="p-5">
-          <Button as="a" href={lesson.url} target="_blank" rel="noopener noreferrer">
+          <Button as="a" href={resourceUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-4 w-4" aria-hidden="true" /> Open demo
           </Button>
         </div>
+      ) : (
+        <div className="p-5 text-sm font-semibold text-bad">This demo link is unavailable.</div>
       )}
       <p className="flex items-center gap-2 border-t border-line px-5 py-3 text-sm font-bold text-navy">
         {lesson.title} <Badge tone="ok">Free demo</Badge>
@@ -180,12 +183,16 @@ export function ProgramDetailPage({ slug, internships = [], loading = false, cur
   const image = programImage(program);
   const semester = semesterLabel(program);
   const free = isFree(program);
-  const skills = Array.isArray(program.skills) ? program.skills : [];
+  const skills = Array.isArray(program.learnPoints) && program.learnPoints.length > 0 ? program.learnPoints : (Array.isArray(program.skills) ? program.skills : []);
+  const included = Array.isArray(program.includes) && program.includes.length > 0 ? program.includes : INCLUDES;
   const facts = [
+    ['Kind', program.kind ? `${program.kind.charAt(0).toUpperCase()}${program.kind.slice(1)}` : ''],
+    ['Instructor', program.instructorName],
+    ['Level', program.level],
+    ['Language', program.language],
     ['Duration', program.duration],
     ['Mode', program.mode],
-    ['Program type', program.type],
-    ['Last date to apply', program.lastDateToApply && program.lastDateToApply !== '2026' ? program.lastDateToApply : ''],
+    ['Last date to apply', program.lastDateToApply],
   ].filter(([, value]) => value);
 
   let joinText = 'Applications are reviewed by the DIBUZZ team. Once accepted, you learn inside My Learning.';
@@ -207,9 +214,9 @@ export function ProgramDetailPage({ slug, internships = [], loading = false, cur
         </nav>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_380px]">
-          <div>
+          <div className="anim-fade-up">
             <Badge className="px-4 py-2">
-              {free ? 'Free program' : 'Paid program'}{semester ? ` · ${semester}` : ''}
+              {program.kind || 'Internship'} · {free ? 'Free' : 'Paid'}{semester ? ` · ${semester}` : ''}
             </Badge>
             <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-navy sm:text-5xl">
               {program.title}
@@ -332,7 +339,7 @@ export function ProgramDetailPage({ slug, internships = [], loading = false, cur
             )}
           </div>
 
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside className="anim-fade-up lg:sticky lg:top-24 lg:self-start" style={{ animationDelay: '120ms' }}>
             <div className="overflow-hidden rounded-card border border-line bg-white shadow-xl shadow-navy/5">
               <div className="relative h-44 bg-gradient-to-br from-soft to-white">
                 {thumb || image ? (
@@ -360,11 +367,12 @@ export function ProgramDetailPage({ slug, internships = [], loading = false, cur
               </div>
               <div className="p-6">
                 <p className="text-3xl font-extrabold tracking-tight text-navy">{free ? 'Free' : priceLabel(program)}</p>
+                {!free && program.originalFee && program.originalFee > program.feeAmount && <p className="mt-1 text-sm font-semibold text-muted line-through">₹{Number(program.originalFee).toLocaleString('en-IN')}</p>}
                 <div className="mt-4">
                   <ActionArea program={program} application={application} start={start} busy={busy} />
                 </div>
                 <ul className="mt-6 space-y-3 text-sm text-muted">
-                  {INCLUDES.map((line) => (
+                  {included.map((line) => (
                     <li key={line} className="flex items-start gap-3">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" /> {line}
                     </li>

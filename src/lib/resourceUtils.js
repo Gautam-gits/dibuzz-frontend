@@ -1,10 +1,29 @@
-// Turns a pasted link into something we can show inside an <iframe>.
-export function getEmbedUrl(url = '') {
+export function getSafeExternalUrl(value = '') {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Turns an allowlisted HTTPS video link into something we can show inside an <iframe>.
+export function getEmbedUrl(value = '') {
+  const url = getSafeExternalUrl(value);
   if (!url) return null;
-  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0`;
-  const drive = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || url.match(/drive\.google\.com\/(?:open|uc)\?[^#]*id=([\w-]+)/);
-  if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+  const parsed = new URL(url);
+  const host = parsed.hostname.toLowerCase();
+  const isYoutube = host === 'youtu.be' || host === 'www.youtube.com' || host === 'youtube.com';
+  if (isYoutube) {
+    const id = host === 'youtu.be'
+      ? parsed.pathname.split('/').filter(Boolean)[0]
+      : parsed.searchParams.get('v') || parsed.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{11})/)?.[1];
+    if (id && /^[\w-]{11}$/.test(id)) return `https://www.youtube.com/embed/${id}?rel=0`;
+  }
+  if (host === 'drive.google.com') {
+    const id = parsed.pathname.match(/^\/file\/d\/([\w-]+)/)?.[1] || parsed.searchParams.get('id');
+    if (id && /^[\w-]+$/.test(id)) return `https://drive.google.com/file/d/${id}/preview`;
+  }
   return null;
 }
 
@@ -17,6 +36,7 @@ export const RESOURCE_TYPES = [
 
 // Small preview picture for a YouTube link (Drive links have none)
 export function getYouTubeThumb(url = '') {
-  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
-  return yt ? `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg` : '';
+  const embed = getEmbedUrl(url);
+  const id = embed?.match(/\/embed\/([\w-]{11})/)?.[1];
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
 }

@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   LayoutDashboard, Award, BookOpen, Users, Plus, Trash2, Edit3, Briefcase, Filter, ShieldCheck,
-  X, RefreshCw, Database, Zap, ClipboardList, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UserPlus, UsersRound,
+  X, RefreshCw, Database, Zap, ClipboardList, AlertCircle, CheckCircle2, IndianRupee, Clock, Image as ImageIcon, HelpCircle, UsersRound,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CertificateManager } from './CertificateManager';
 import { ContentManager } from './ContentManager';
 import { TeamManager } from './TeamManager';
+import { ProgramManager } from './ProgramManager';
 /* ─── Toast ─────────────────────────────────────────────────── */
 function Toast({ toasts, remove }) {
   if (!toasts.length) return null;
@@ -145,7 +146,6 @@ export function AdminDashboard({
   /* modal states */
   const [showAddInt, setShowAddInt] = useState(false);
   const [showAddCrs, setShowAddCrs] = useState(false);
-  const [showAddUsr, setShowAddUsr] = useState(false);
   const [showAddFaq, setShowAddFaq] = useState(false);
   const [editInt, setEditInt] = useState(null);
   const [editCrs, setEditCrs] = useState(null);
@@ -175,17 +175,13 @@ export function AdminDashboard({
   const blankCrs = { title: '', category: '', price: '', originalPrice: '', description: '', image: '', duration: '', badge: '', level: '', rating: '', studentsCount: '', reviewsCount: '' };
   const [cForm, setCForm] = useState(blankCrs);
 
-  /* add-user form */
-  const blankUsr = { name: '', email: '', phone: '', password: '', role: 'student' };
-  const [uForm, setUForm] = useState(blankUsr);
-
   /* add-faq form */
   const blankFaq = { question: '', answer: '', category: 'General' };
   const [fForm, setFForm] = useState(blankFaq);
 
   /* derived */
   const totalRevenue = transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const adminCount = users.filter(u => u.role === 'admin' || u.email === 'mananjayprasad7@gmail.com').length;
+  const adminCount = users.filter((user) => user.role === 'admin').length;
   const filteredInts = internships.filter(i => {
     if (sem === 'All') return true;
     if (sem === '3rd Sem') return i.badge?.includes('3rd');
@@ -374,35 +370,6 @@ export function AdminDashboard({
     }
   });
 
-  /* ── Handlers for Users ── */
-  const addUser = async (e) => {
-    e.preventDefault();
-    if (!uForm.email.trim() || !uForm.name.trim()) { add('Name & Email required', 'error'); return; }
-    setBusy(true);
-    try {
-      const { error } = await supabase.from('profiles').insert([{
-        name: uForm.name, email: uForm.email, phone: uForm.phone, password: uForm.password, role: uForm.role, joined_date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      }]);
-      if (error) throw error;
-      setShowAddUsr(false); setUForm(blankUsr);
-      if (refreshData) refreshData(); add('User created successfully!', 'success');
-    } catch (e) { add('Error: ' + e.message, 'error'); }
-    finally { setBusy(false); }
-  };
-
-  const delUsr = (id) => setConfirm({
-    msg: 'Delete this user permanently from Supabase?',
-    onOk: async () => {
-      setConfirm(null); setBusy(true);
-      try {
-        const { error } = await supabase.from('profiles').delete().eq('id', Number(id));
-        if (error) throw error;
-        if (refreshData) refreshData(); add('User deleted!', 'success');
-      } catch (e) { add('Delete failed: ' + e.message, 'error'); }
-      finally { setBusy(false); }
-    }
-  });
-
   /* ── Handlers for FAQs ── */
   const addFaq = async (e) => {
     e.preventDefault();
@@ -447,9 +414,8 @@ export function AdminDashboard({
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'internships', label: 'Internships', icon: Briefcase },
+    { id: 'programs', label: 'Programs', icon: Briefcase },
     { id: 'applications', label: 'Applications', icon: ClipboardList },
-    { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
     { id: 'faqs', label: 'FAQs', icon: HelpCircle },
@@ -543,17 +509,17 @@ export function AdminDashboard({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                <button onClick={() => { setShowAddInt(true); setTab('internships'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                <button onClick={() => setTab('programs')} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
                   <div className="p-2 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
-                  <span className="font-bold text-slate-800">Add Internship</span>
+                  <span className="font-bold text-slate-800">Manage Programs</span>
                 </button>
-                <button onClick={() => { setShowAddCrs(true); setTab('courses'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                <button onClick={() => setTab('programs')} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
                   <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
-                  <span className="font-bold text-slate-800">Add Course</span>
+                  <span className="font-bold text-slate-800">Create Program</span>
                 </button>
-                <button onClick={() => { setShowAddUsr(true); setTab('users'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
-                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors"><UserPlus className="w-5 h-5" /></div>
-                  <span className="font-bold text-slate-800">Add User</span>
+                <button onClick={() => setTab('users')} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors"><Users className="w-5 h-5" /></div>
+                  <span className="font-bold text-slate-800">View Users</span>
                 </button>
                 <button onClick={() => { setShowAddFaq(true); setTab('faqs'); }} className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col gap-2 items-start cursor-pointer group">
                   <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Plus className="w-5 h-5" /></div>
@@ -562,6 +528,8 @@ export function AdminDashboard({
               </div>
             </div>
           )}
+
+          {tab === 'programs' && <ProgramManager onChanged={refreshData} />}
 
           {/* ── INTERNSHIPS ── */}
           {tab === 'internships' && (
@@ -830,19 +798,16 @@ export function AdminDashboard({
           {/* ── USERS ── */}
           {tab === 'users' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div>
                 <h2 className="text-xl font-black text-slate-900">Users</h2>
-                <button onClick={() => setShowAddUsr(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer">
-                  <UserPlus className="w-4 h-4" /> Add User
-                </button>
+                <p className="mt-1 text-xs text-slate-500">Accounts are created and managed through Supabase Auth, not this browser dashboard.</p>
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs min-w-[600px]">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        {['#', 'Name', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
+                        {['#', 'Name', 'Email', 'Role', 'Joined'].map(h => (
                           <th key={h} className="px-4 py-3 text-slate-500 font-bold uppercase text-[10px] tracking-widest">{h}</th>
                         ))}
                       </tr>
@@ -858,11 +823,6 @@ export function AdminDashboard({
                               }`}>{u.role || 'student'}</span>
                           </td>
                           <td className="px-4 py-3 text-slate-500">{u.joinedDate || u.joined_date || '—'}</td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => delUsr(u.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded-md cursor-pointer transition-colors">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1119,35 +1079,6 @@ export function AdminDashboard({
             </Field>
             <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
               {busy ? 'Saving...' : 'Save Course'}
-            </button>
-          </form>
-        </Modal>
-      )}
-
-      {/* Add User */}
-      {showAddUsr && (
-        <Modal title="Add User" icon={UserPlus} iconColor="bg-amber-50 text-amber-600 border-amber-200" onClose={() => setShowAddUsr(false)}>
-          <form onSubmit={addUser} className="space-y-4">
-            <Field label="Full Name *">
-              <input required type="text" value={uForm.name} onChange={e => setUForm(p => ({ ...p, name: e.target.value }))} className={INP} />
-            </Field>
-            <Field label="Email Address *">
-              <input required type="email" value={uForm.email} onChange={e => setUForm(p => ({ ...p, email: e.target.value }))} className={INP} />
-            </Field>
-            <Field label="Phone">
-              <input type="text" value={uForm.phone} onChange={e => setUForm(p => ({ ...p, phone: e.target.value }))} className={INP} />
-            </Field>
-            <Field label="Password (Optional)">
-              <input type="text" placeholder="Leave empty for generic student" value={uForm.password} onChange={e => setUForm(p => ({ ...p, password: e.target.value }))} className={INP} />
-            </Field>
-            <Field label="Role">
-              <select value={uForm.role} onChange={e => setUForm(p => ({ ...p, role: e.target.value }))} className={INP}>
-                <option value="student">Student</option>
-                <option value="admin">Admin</option>
-              </select>
-            </Field>
-            <button type="submit" disabled={busy} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all cursor-pointer disabled:opacity-50">
-              Create User
             </button>
           </form>
         </Modal>

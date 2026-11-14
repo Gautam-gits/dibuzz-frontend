@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Circle, ExternalLink, LoaderCircle, PlayCircle, FileText, Link as LinkIcon, StickyNote } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { getEmbedUrl } from '../lib/resourceUtils';
+import { getEmbedUrl, getSafeExternalUrl } from '../lib/resourceUtils';
 
 const ICON = { video: PlayCircle, pdf: FileText, link: LinkIcon, notes: StickyNote };
 
@@ -79,6 +79,7 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
   }
 
   const embed = current ? getEmbedUrl(current.url) : null;
+  const resourceUrl = current ? getSafeExternalUrl(current.url) : null;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -122,11 +123,13 @@ export function CoursePlayer({ internship, currentUser, onBack }) {
                   </div>
                 ) : current.type === 'notes' ? (
                   <div className="whitespace-pre-wrap rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{current.body}</div>
-                ) : (
-                  <a href={current.url} target="_blank" rel="noopener noreferrer"
+                ) : resourceUrl ? (
+                  <a href={resourceUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-3 text-sm font-bold text-white hover:bg-sky-700">
                     <ExternalLink className="h-4 w-4" /> Open resource
                   </a>
+                ) : (
+                  <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">This resource link is unavailable because it is not a valid HTTPS URL.</p>
                 )}
 
                 <div className="mt-5 flex flex-wrap gap-3">

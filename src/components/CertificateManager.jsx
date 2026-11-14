@@ -21,7 +21,9 @@ const initialForm = {
   regRollNo: '',
   startDate: '',
   endDate: '',
-  grade: 'A'
+  grade: 'A',
+  deliveryMode: 'online',
+  internshipMode: 'online'
 };
 
 const formatDate = (dateValue) => {
@@ -101,6 +103,9 @@ export function CertificateManager() {
     setSubmitting(true);
 
     try {
+      console.log('[Certificate] Starting certificate issuance...');
+      console.log('[Certificate] Form data:', { ...form, studentId: selectedStudent.id });
+
       const {
         data: { user: adminUser }
       } = await supabase.auth.getUser();
@@ -108,7 +113,10 @@ export function CertificateManager() {
       if (!adminUser) {
         throw new Error('Admin session not found. Please sign in again.');
       }
+      console.log('[Certificate] Admin user:', adminUser.id);
 
+      // 1. Create certificate record
+      console.log('[Certificate] Inserting certificate record...');
       const { data: certificate, error: createError } = await supabase
         .from('certificates')
         .insert({
@@ -121,64 +129,94 @@ export function CertificateManager() {
           start_date: form.startDate,
           end_date: form.endDate,
           grade: form.grade,
-          issued_by: adminUser.id
+          issued_by: adminUser.id,
+          delivery_mode: form.deliveryMode,
+          internship_mode: form.internshipMode
         })
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('[Certificate] Create error:', createError);
+        throw createError;
+      }
+      console.log('[Certificate] Created:', certificate.certificate_number);
 
-      // Load MSME / ISO / MCA / logo images from /public so they appear in the PDF
+      // 2. Load images
+      console.log('[Certificate] Loading images...');
       const images = await preloadCertificateImages();
+      console.log('[Certificate] Images loaded:', Object.keys(images));
 
-      const pdfBlob = createCertificatePdf({
+      // 3. Generate PDF
+      console.log('[Certificate] Generating PDF...');
+      const pdfBlob = await createCertificatePdf({
         certificateNumber: certificate.certificate_number,
+        aicteRefId: 'CORPORATE6a6f13865f5d91785664390',
         studentName: certificate.student_name,
-        programName: certificate.program_name,
         collegeName: form.collegeName.trim(),
         regRollNo: form.regRollNo.trim(),
+        programName: certificate.program_name,
+        companyName: 'DIBUZZ DIGITAL PRIVATE LIMITED',
         startDate: form.startDate,
         endDate: form.endDate,
         grade: form.grade,
         certificateType: certificate.certificate_type,
         issuedDate: certificate.issued_date,
-        images
+        signatoryName: 'Gautam Kumar',
+        signatoryTitle: 'Director',
+        verifyBaseUrl: 'https://www.dibuzz.in/verify',
+        images,
+        deliveryMode: form.deliveryMode,
+        internshipMode: form.internshipMode
       });
+      console.log('[Certificate] PDF generated, size:', pdfBlob.size, 'bytes');
 
+      if (pdfBlob.size === 0) {
+        throw new Error('Generated PDF is empty (0 bytes)');
+      }
+
+      // 4. Upload to storage
       const filePath = `${selectedStudent.id}/${certificate.certificate_number}.pdf`;
+      console.log('[Certificate] Uploading to storage:', filePath);
 
       const { error: uploadError } = await supabase.storage
         .from('certificates')
         .upload(filePath, pdfBlob, {
           contentType: 'application/pdf',
-          upsert: false
+          upsert: true
         });
 
       if (uploadError) {
+        console.error('[Certificate] Storage upload error:', uploadError);
         await supabase.from('certificates').delete().eq('id', certificate.id);
-        throw uploadError;
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
+      console.log('[Certificate] Upload successful');
 
+      // 5. Update record with file path
+      console.log('[Certificate] Updating DB with file path...');
       const { error: updateError } = await supabase
         .from('certificates')
-        .update({ file_path: filePath })
+        .update({ file_path: filePath, status: 'issued' })
         .eq('id', certificate.id);
 
       if (updateError) {
-        // Roll back so we never keep a certificate row without a file path
+        console.error('[Certificate] DB update error:', updateError);
         await supabase.storage.from('certificates').remove([filePath]);
         await supabase.from('certificates').delete().eq('id', certificate.id);
-        throw updateError;
+        throw new Error(`Database update failed: ${updateError.message}`);
       }
 
-      setForm(initialForm);
+      console.log('[Certificate] Complete!');
+      setForm({ ...initialForm, deliveryMode: 'online', internshipMode: 'online' });
       setShowIssueModal(false);
       showMessage(
         `Certificate ${certificate.certificate_number} issued to ${certificate.student_name}. It is now visible in their dashboard.`
       );
       await loadData();
     } catch (error) {
-      showMessage(error.message || 'Certificate could not be issued.', 'error');
+      console.error('[Certificate] FAILED:', error);
+      showMessage(error.message || 'Certificate could not be issued. Check console for details.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -186,21 +224,19 @@ export function CertificateManager() {
 
   const downloadCertificate = async (certificate) => {
     if (!certificate.file_path) {
-      showMessage('PDF file is not available for this certificate.', 'error');
+      showMessage('PDF file not found for this certificate.', 'error');
       return;
     }
 
+    // Both admin and student use signed URLs (bucket is private)
     const { data, error } = await supabase.storage
       .from('certificates')
       .createSignedUrl(certificate.file_path, 120);
-
-    if (error) {
-      showMessage(error.message, 'error');
-      return;
-    }
+    if (error) { showMessage(error.message, 'error'); return; }
+    const url = data.signedUrl;
 
     const link = document.createElement('a');
-    link.href = data.signedUrl;
+    link.href = url;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
@@ -272,7 +308,7 @@ export function CertificateManager() {
           </button>
 
           <button
-            onClick={() => setShowIssueModal(true)}
+            onClick={() => { setForm({ ...initialForm, deliveryMode: 'online', internshipMode: 'online' }); setShowIssueModal(true); }}
             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-violet-700"
           >
             <FilePlus2 className="h-4 w-4" />
@@ -313,6 +349,7 @@ export function CertificateManager() {
                   <th className="px-4 py-3">Student</th>
                   <th className="px-4 py-3">Programme</th>
                   <th className="px-4 py-3">Certificate No.</th>
+                  <th className="px-4 py-3">Mode</th>
                   <th className="px-4 py-3">Issued</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -333,6 +370,15 @@ export function CertificateManager() {
                     </td>
                     <td className="px-4 py-3 font-mono font-bold text-violet-700">
                       {certificate.certificate_number}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${
+                        certificate.delivery_mode === 'offline'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {certificate.delivery_mode === 'offline' ? '📄' : '💻'} {certificate.delivery_mode || 'online'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {formatDate(certificate.issued_date)}
@@ -398,7 +444,7 @@ export function CertificateManager() {
 
               <button
                 type="button"
-                onClick={() => setShowIssueModal(false)}
+                onClick={() => { setForm({ ...initialForm, deliveryMode: 'online', internshipMode: 'online' }); setShowIssueModal(false); }}
                 className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition"
               >
                 <X className="h-4 w-4" />
@@ -533,6 +579,31 @@ export function CertificateManager() {
                   <option value="B+">Grade B+ (Very Good)</option>
                   <option value="B">Grade B (Good)</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">Delivery Mode</label>
+                <select
+                  value={form.deliveryMode}
+                  onChange={(e) => setForm((prev) => ({ ...prev, deliveryMode: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                >
+                  <option value="online">Online Certificate (Digital)</option>
+                  <option value="offline">Offline Certificate (Physical Print)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">Internship Mode</label>
+                <select
+                  value={form.internshipMode}
+                  onChange={(e) => setForm((prev) => ({ ...prev, internshipMode: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                >
+                  <option value="online">Online Internship</option>
+                  <option value="offline">Offline Internship</option>
+                </select>
+                <p className="mt-1 text-[11px] text-slate-500">Appears on certificate as "X Weeks Online/Offline Internship"</p>
               </div>
 
               <div className="pt-3">

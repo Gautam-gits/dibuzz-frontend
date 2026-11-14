@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { X, Plus, Trash2, ChevronUp, ChevronDown, LoaderCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { RESOURCE_TYPES } from '../lib/resourceUtils';
+import { getSafeExternalUrl, RESOURCE_TYPES } from '../lib/resourceUtils';
 
 const INP = 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500';
 
@@ -55,11 +55,14 @@ export function ContentManager({ internship, onClose }) {
     if (form.type === 'notes' ? !form.body.trim() : !form.url.trim()) {
       setError(form.type === 'notes' ? 'Write the notes text.' : 'Paste the link.'); return;
     }
+    if (form.type !== 'notes' && !getSafeExternalUrl(form.url.trim())) {
+      setError('Use a valid HTTPS resource URL.'); return;
+    }
     setError('');
     const count = resources.filter(r => String(r.module_id) === String(form.moduleId)).length;
     const { error: err } = await supabase.from('internship_resources').insert({
       module_id: Number(form.moduleId), title: form.title.trim(), type: form.type,
-      url: form.type === 'notes' ? null : form.url.trim(),
+      url: form.type === 'notes' ? null : getSafeExternalUrl(form.url.trim()),
       body: form.type === 'notes' ? form.body.trim() : null,
       sort_order: count + 1,
       is_preview: Boolean(form.preview),

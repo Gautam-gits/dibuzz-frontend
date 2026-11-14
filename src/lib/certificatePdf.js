@@ -1,9 +1,9 @@
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 
 /* ---------- Helpers ---------- */
 
 // Letter-spacing wala text ekdum sahi centre me draw karta hai.
-// Note: pehle setFont / setFontSize karo, phir ise call karo.
 function drawSpacedCentered(doc, text, centerX, y, charSpace = 0) {
   const w = doc.getTextWidth(text) + charSpace * (text.length - 1);
   doc.text(text, centerX - w / 2, y, { charSpace });
@@ -83,7 +83,7 @@ function drawImageSafe(doc, src, x, y, w, h) {
   }
 }
 
-// jsPDF URL se image synchronously load nahi kar sakta, isliye pehle await karke load karo.
+// Preload external images (logo, badges, stamp, etc.)
 export async function preloadCertificateImages(paths = {
   logo: '/logo.png',
   msme: '/msme.png',
@@ -110,16 +110,17 @@ export async function preloadCertificateImages(paths = {
   return out;
 }
 
-/* ---------- Main ---------- */
+/* ---------- Main (Async to support QR code generation) ---------- */
 
-export function createCertificatePdf(data) {
+export async function createCertificatePdf(data) {
   const {
-    certificateNumber = 'DBZ-2026-XXXX',
+    certificateNumber = 'DBZ-2026-890874C2',
+    aicteRefId = 'CORPORATE6a6f13865f5d91785664390',
     studentName = '',
     collegeName = '',
     regRollNo = '',
     programName = '',
-    companyName = 'Dibuzz Digital Private Limited',
+    companyName = 'DIBUZZ DIGITAL PRIVATE LIMITED',
     startDate = '',
     endDate = '',
     grade = 'A',
@@ -127,9 +128,26 @@ export function createCertificatePdf(data) {
     issuedDate = new Date().toISOString().split('T')[0],
     signatoryName = 'Gautam Kumar',
     signatoryTitle = 'Director',
-    verifyUrl = '', // optional: e.g. 'dibuzz.com/verify'
-    images = {}     // optional preloaded data-URLs: { logo, msme, iso, mca, stamp }
+    verifyBaseUrl = 'https://www.dibuzz.in/verify',
+    images = {},
+    internshipMode = 'online' // 'online' | 'offline'
   } = data;
+
+  // Generate verification URL for QR code (uses query parameter for existing verifier route)
+  const verifyUrl = `${verifyBaseUrl}?id=${certificateNumber}`;
+  let qrDataUrl = images.qr;
+
+  if (!qrDataUrl) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 150
+      });
+    } catch (err) {
+      console.error('Failed to generate QR code', err);
+    }
+  }
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
@@ -148,17 +166,16 @@ export function createCertificatePdf(data) {
 
   /* ----- Background, frame, watermark ----- */
 
-  // Navy outer frame + white page
   doc.setFillColor(...DEEP);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
   doc.setFillColor(255, 255, 255);
   doc.rect(6, 6, pageWidth - 12, pageHeight - 12, 'F');
 
-  // Soft "DIBUZZ" watermark (sirf tab jab opacity supported ho)
+  // Soft watermark
   try {
     doc.setGState(new doc.GState({ opacity: 0.045 }));
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(96);
+    doc.setFontSize(90);
     doc.setTextColor(...NAVY);
     doc.text('DIBUZZ', cx, 132, { align: 'center' });
     doc.setGState(new doc.GState({ opacity: 1 }));
@@ -171,19 +188,28 @@ export function createCertificatePdf(data) {
   doc.setLineWidth(0.2);
   doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
 
-  /* ----- Header ----- */
+  /* ----- Top Header Section ----- */
 
-  // Certificate number
+  // AICTE Org. Ref. Id (Top Left Line 1)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GRAY);
+  doc.text('AICTE Org. Ref. Id:', 16, 17);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...NAVY);
+  doc.text(aicteRefId, 16 + doc.getTextWidth('AICTE Org. Ref. Id: '), 17);
+
+  // Certificate Number (Top Left Line 2)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...NAVY);
   const label = 'CERTIFICATE NO: ';
-  doc.text(label, 16, 66);
+  doc.text(label, 16, 24);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...TEAL);
-  doc.text(certificateNumber, 16 + doc.getTextWidth(label), 66);
+  doc.text(certificateNumber, 16 + doc.getTextWidth(label), 24);
 
-  // Logo (top right)
+  // Logo (Top Right)
   if (!drawImageSafe(doc, images.logo || '/logo.png', 246, 16, 35, 18)) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
@@ -191,25 +217,25 @@ export function createCertificatePdf(data) {
     doc.text('DIBUZZ', 263, 26, { align: 'center' });
   }
 
-  // Company name (ekdum centre me)
+  // Company Name Header (Centered)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...TEAL);
   drawSpacedCentered(doc, companyName.toUpperCase(), cx, 24, 2);
 
-  // Title
+  // Main Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(36);
   doc.setTextColor(...NAVY);
   drawSpacedCentered(doc, 'CERTIFICATE', cx, 44, 2);
 
-  // OF ACHIEVEMENT
+  // Subtitle
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...GRAY);
   drawSpacedCentered(doc, 'OF ACHIEVEMENT', cx, 52, 3.5);
 
-  // Gold divider with diamond
+  // Gold divider with diamond accent
   const divY = 58.5;
   doc.setDrawColor(...GOLD);
   doc.setLineWidth(0.5);
@@ -219,14 +245,14 @@ export function createCertificatePdf(data) {
   doc.triangle(cx, divY - 2, cx + 2.2, divY, cx, divY + 2, 'F');
   doc.triangle(cx, divY - 2, cx - 2.2, divY, cx, divY + 2, 'F');
 
-  /* ----- Body ----- */
+  /* ----- Body Section ----- */
 
   doc.setFont('times', 'italic');
   doc.setFontSize(12.5);
   doc.setTextColor(...GRAY);
   doc.text('This is to certify that Mr./Ms.', cx, 69, { align: 'center' });
 
-  // Student name (auto-shrink agar lamba ho)
+  // Student name (auto-shrink if too long)
   let nameSize = 30;
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(nameSize);
@@ -248,6 +274,11 @@ export function createCertificatePdf(data) {
     ? `from ${formatDate(startDate)} to ${formatDate(endDate)}`
     : (isCourse ? 'the course period' : 'the internship period');
 
+  // Determine mode label for paragraph
+  const modeLabel = internshipMode === 'online' ? 'Online' : 'Offline';
+  const programLabel = isCourse ? 'Course' : 'Internship';
+  const article = (modeLabel === 'Online' || modeLabel === 'Offline') ? 'an' : 'a';
+
   const N = { font: 'times', style: 'normal', color: TEXT };
   const B = { font: 'times', style: 'bold', color: NAVY };
   const BI = { font: 'times', style: 'bolditalic', color: TEAL };
@@ -259,7 +290,7 @@ export function createCertificatePdf(data) {
       { ...B, text: collegeName },
       { ...N, text: ', bearing Reg. / Roll No: ' },
       { ...B, text: regRollNo },
-      { ...N, text: `, has successfully completed ${isCourse ? 'a Course' : 'an Internship'} in ` },
+      { ...N, text: `, has successfully completed ${article} ${modeLabel} ${programLabel} in ` },
       { ...B, text: programName },
       { ...N, text: ' at ' },
       { ...BI, text: `${companyName}.` },
@@ -282,7 +313,7 @@ export function createCertificatePdf(data) {
   doc.setTextColor(255, 255, 255);
   drawSpacedCentered(doc, `GRADE: ${grade}`, cx, gy + 6.3, 0.6);
 
-  // Conduct
+  // Closing remark
   drawRichParagraph(
     doc,
     [{
@@ -292,26 +323,34 @@ export function createCertificatePdf(data) {
     cx, gy + 18, 215, 6, 10.5
   );
 
-  /* ----- Footer row ----- */
+  /* ----- Footer Row (Scannable QR Code, Date, Signature, Stamp, Badges) ----- */
 
   const lineY = 166;
 
-  // Left: Date of issue
+  // Bottom-Left: Automatically Generated Scannable QR Code + Date of Issue
+  const qrX = 18;
+  const qrY = 144;
+  const qrSize = 21;
+
+  if (qrDataUrl) {
+    drawImageSafe(doc, qrDataUrl, qrX, qrY, qrSize, qrSize);
+  }
+
+  // Issue Date right beside QR code area
   const formattedIssuedDate = new Date(`${issuedDate}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric'
   });
-  const dateX = 50;
   doc.setFont('times', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(...NAVY);
-  doc.text(formattedIssuedDate, dateX, lineY - 3, { align: 'center' });
+  doc.text(formattedIssuedDate, qrX + qrSize + 14, lineY - 3, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(...GRAY);
-  drawSpacedCentered(doc, 'DATE OF ISSUE', dateX, lineY + 6, 0.8);
+  drawSpacedCentered(doc, 'DATE OF ISSUE', qrX + qrSize + 14, lineY + 6, 0.6);
 
-  // Centre: Signature
-  const sigX = cx;
+  // Center: Signature & Authority details
+  const sigX = cx + 15;
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(20);
   doc.setTextColor(30, 30, 30);
@@ -330,27 +369,26 @@ export function createCertificatePdf(data) {
   doc.setTextColor(90, 90, 90);
   doc.text(signatoryTitle, sigX, lineY + 11, { align: 'center' });
 
-  // Authorised Signatory line (pehle yahan "Digitally signed by" tha)
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7.5);
   doc.setTextColor(...TEAL);
   doc.text(`Authorised Signatory - ${signatoryName}`, sigX, lineY + 16.5, { align: 'center' });
 
-  // Company stamp: signature ke upar (signature draw hone ke BAAD, taaki upar dikhe)
+  // Company stamp overlaying signature block
   if (images.stamp) {
-    const stampSize = 30;
-    const stampX = sigX - 3;   // thoda right me, taaki naam ke upar aaye
+    const stampSize = 28;
+    const stampX = sigX - 2;
     const stampY = 148;
     try {
       doc.setGState(new doc.GState({ opacity: 0.9 }));
-    } catch (e) { /* opacity support nahi to seedha draw hoga */ }
+    } catch (e) { /* fallback */ }
     drawImageSafe(doc, images.stamp, stampX, stampY, stampSize, stampSize);
     try {
       doc.setGState(new doc.GState({ opacity: 1 }));
     } catch (e) { /* skip */ }
   }
 
-  // Badges: MSME, ISO, MCA
+  // Bottom-Right: Accreditation Badges (MSME, ISO, MCA)
   const badges = [
     { key: 'msme', path: '/msme.png', x: 207 },
     { key: 'iso', path: '/iso.png', x: 230 },
@@ -367,13 +405,11 @@ export function createCertificatePdf(data) {
     doc.text('MSME | ISO CERTIFIED | MCA', 245, 168, { align: 'center' });
   }
 
-  // Bottom line
+  // Bottom Footer Fine Print
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(140, 140, 140);
-  const footerText = verifyUrl
-    ? `Certificate ID: ${certificateNumber}   |   Verify at ${verifyUrl}`
-    : `Certificate ID: ${certificateNumber}   |   Issued by ${companyName}`;
+  const footerText = `AICTE Org. Ref. Id: ${aicteRefId}   |   Certificate ID: ${certificateNumber}   |   Verify: ${verifyUrl}`;
   doc.text(footerText, cx, 192, { align: 'center' });
 
   return doc.output('blob');

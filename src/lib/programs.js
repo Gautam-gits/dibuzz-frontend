@@ -20,6 +20,10 @@ export function findProgramBySlug(list = [], slug = '') {
 
 // "3rd Sem" / "3rd Semester Training" -> "3rd semester"
 export function semesterLabel(item) {
+  if (item.semester) {
+    const value = String(item.semester).trim();
+    return /semester/i.test(value) ? value : `${value} semester`;
+  }
   const match = `${item.badge || ''} ${item.type || ''}`.match(/(\d+)(st|nd|rd|th)/i);
   return match ? `${match[1]}${match[2].toLowerCase()} semester` : '';
 }

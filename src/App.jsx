@@ -9,28 +9,16 @@ import { HomePage } from './components/HomePage';
 import { ServicesPage } from './components/ServicesPage';
 import { AboutPage } from './components/AboutPage';
 import { ContactPage } from './components/ContactPage';
-import { Hero } from './components/Hero';
-import { CourseExplorer } from './components/CourseExplorer';
-import { CourseDetailModal } from './components/CourseDetailModal';
 import { CertificateVerifier } from './components/CertificateVerifier';
-import { PaymentModal } from './components/PaymentModal';
 import { AuthModal } from './components/AuthModal';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
-import { AboutSection } from './components/AboutSection';
-import { InternshipSection } from './components/InternshipSection';
-import { HomeSections } from './components/HomeSections';
-import { LandingPage } from './components/LandingPage';
 
 import { supabase } from './lib/supabase';
 import {
   INITIAL_COMPANY_INFO,
-  INITIAL_COURSES,
   INITIAL_VERIFIED_CERTIFICATES,
-  INITIAL_USERS,
-  INITIAL_TRANSACTIONS,
-  INITIAL_INTERNSHIPS,
-  TESTIMONIALS
 } from './data/mockData';
 
 // Every page has a real address (URL). Old "tab" names still work inside the code.
@@ -44,6 +32,7 @@ const TAB_PATHS = {
   about: '/about',
   contact: '/contact',
   login: '/login',
+  resetPassword: '/reset-password',
   dashboard: '/dashboard',
   admin: '/admin'
 };
@@ -56,6 +45,7 @@ const PATH_TABS = {
   '/about': 'about',
   '/contact': 'contact',
   '/login': 'login',
+  '/reset-password': 'resetPassword',
   '/dashboard': 'dashboard',
   '/admin': 'admin'
 };
@@ -69,6 +59,7 @@ const PAGE_TITLES = {
   contact: 'Contact | DIBUZZ',
   program: 'Program | DIBUZZ',
   login: 'Sign in | DIBUZZ',
+  resetPassword: 'Reset password | DIBUZZ',
   dashboard: 'My Learning | DIBUZZ',
   admin: 'DIBUZZ Admin',
   notfound: 'Page not found | DIBUZZ'
@@ -134,10 +125,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   // Modals state
-  const [detailCourse, setDetailCourse] = useState(null);
-  const [paymentCourse, setPaymentCourse] = useState(null);
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
-  const [showSqlModal, setShowSqlModal] = useState(false);
 
   // Navigation: every page has a real URL (react-router)
   const handleTabChange = (tabName) => {
@@ -158,9 +146,7 @@ export default function App() {
     navigate(TAB_PATHS[tabName] || '/');
   };
 
-  const handleSelectCourse = (course) => setDetailCourse(course);
   const handleOpenAuthModal = (mode = 'login') => setAuthModal({ isOpen: true, mode });
-  const handleOpenPaymentModal = (course) => setPaymentCourse(course);
 
   // Scroll to the top (or to #section) when the page changes, and set the page title
   useEffect(() => {
@@ -207,27 +193,45 @@ export default function App() {
         skills: typeof i.skills === 'string' ? JSON.parse(i.skills) : (i.skills || []),
         description: i.description,
         image: i.image,
+        kind: i.kind || 'internship',
+        semester: i.semester || '',
+        category: i.category || '',
+        shortSummary: i.short_summary || '',
+        instructorName: i.instructor_name || '',
+        level: i.level || '',
+        language: i.language || '',
+        originalFee: i.original_fee === null || i.original_fee === undefined ? null : Number(i.original_fee),
+        learnPoints: typeof i.learn_points === 'string' ? JSON.parse(i.learn_points) : (i.learn_points || []),
+        includes: typeof i.includes === 'string' ? JSON.parse(i.includes) : (i.includes || []),
+        deadline: i.deadline || '',
+        featured: Boolean(i.is_featured),
+        status: i.status || (i.is_active ? 'published' : 'archived'),
         paymentRequired: Boolean(i.payment_required),
         approvalRequired: i.approval_required !== false,
         feeAmount: Number(i.fee_amount || 0),
         currency: i.currency || 'INR',
-        lastDateToApply: i.last_date || i.lastDateToApply || '2026',
-        isActive: i.is_active !== false
+        lastDateToApply: i.deadline || i.last_date || i.lastDateToApply || '',
+        isActive: i.status ? i.status === 'published' : i.is_active !== false
       })));
 
-      const { data: dbProfiles } = await supabase.from('profiles').select('*').order('id', { ascending: false });
-      if (dbProfiles) setUsers(dbProfiles.map(p => ({
-        id: p.id,
-        name: p.name,
-        email: p.email,
-        phone: p.phone,
-        password: p.password,
-        role: p.role || 'student',
-        joinedDate: p.joined_date || p.joinedDate || 'Jan 01, 2025',
-        enrolledCourses: p.enrolled_courses || [],
-        certificates: p.certificates || [],
-        profileImage: p.profile_image || p.profileImage || null
-      })));
+      // Profile data is personal data. Only an authenticated administrator may
+      // request the directory, and it is never cached in browser storage.
+      if (currentUser?.role === 'admin') {
+        const { data: dbProfiles } = await supabase.from('profiles').select('*').order('id', { ascending: false });
+        if (dbProfiles) setUsers(dbProfiles.map(p => ({
+          id: p.id,
+          name: p.full_name || 'Student',
+          email: p.email,
+          phone: p.phone,
+          role: p.role || 'student',
+          joinedDate: p.joined_date
+            ? new Date(p.joined_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : 'Jan 01, 2025',
+          profileImage: p.profile_image || null
+        })));
+      } else {
+        setUsers([]);
+      }
 
       const { data: dbFaqs } = await supabase.from('faqs').select('*').order('id', { ascending: false });
       if (dbFaqs) setFaqs(dbFaqs);
@@ -243,51 +247,42 @@ export default function App() {
   useEffect(() => {
     fetchData();
 
-    // Setup Realtime Subscriptions
+    // Setup Realtime Subscriptions - only listen to relevant events, debounce refetch
+    let debounceTimer = null;
+    const debouncedFetch = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchData, 300);
+    };
+
     const channel = supabase.channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'internships' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'faqs' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'internships' }, debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'internships' }, debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'courses' }, debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'courses' }, debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, debouncedFetch)
       .subscribe();
 
     return () => {
+      clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Save to localStorage as backup
-  useEffect(() => {
-    localStorage.setItem('dibuzz_company', JSON.stringify(companyInfo));
-  }, [companyInfo]);
+  // Save to localStorage as backup (throttled to avoid flicker)
+  const saveToStorage = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  };
 
+  useEffect(() => { saveToStorage('dibuzz_company', companyInfo); }, [companyInfo]);
+  useEffect(() => { saveToStorage('dibuzz_courses', courses); }, [courses]);
+  useEffect(() => { saveToStorage('dibuzz_internships', internships); }, [internships]);
+  useEffect(() => { saveToStorage('dibuzz_certs', verifiedCertificates); }, [verifiedCertificates]);
+  useEffect(() => { saveToStorage('dibuzz_txns', transactions); }, [transactions]);
+  useEffect(() => { saveToStorage('dibuzz_faqs', faqs); }, [faqs]);
   useEffect(() => {
-    localStorage.setItem('dibuzz_courses', JSON.stringify(courses));
-  }, [courses]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_internships', JSON.stringify(internships));
-  }, [internships]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_certs', JSON.stringify(verifiedCertificates));
-  }, [verifiedCertificates]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_txns', JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_faqs', JSON.stringify(faqs));
-  }, [faqs]);
-
-  useEffect(() => {
-    localStorage.setItem('dibuzz_current_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    if (currentUser?.role === 'admin') fetchData();
+  }, [currentUser?.role]);
 
   const mapProfileToUser = (profile) => ({
     id: profile.id,
@@ -306,6 +301,9 @@ export default function App() {
     collegeName: profile.college_name || '',
     course: profile.course || '',
     branch: profile.branch || '',
+    semester: profile.semester || '',
+    collegeRollNo: profile.college_roll_no || '',
+    nocPdfPath: profile.noc_pdf_path || '',
     profileImage: profile.profile_image || null,
     enrolledCourses: profile.enrolled_courses || [],
     certificates: profile.certificates || []
@@ -317,14 +315,28 @@ export default function App() {
       return null;
     }
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
+    let profile = null;
 
-    if (error || !profile) {
-      console.error('Unable to load profile:', error);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error || !data) {
+        console.error('Unable to load profile:', error?.message || error);
+        setCurrentUser(null);
+        return null;
+      }
+      profile = data;
+    } catch (networkError) {
+      console.error('Network error loading profile:', networkError);
+      setCurrentUser(null);
+      return null;
+    }
+
+    if (!profile) {
       setCurrentUser(null);
       return null;
     }
@@ -335,11 +347,6 @@ export default function App() {
     });
 
     setCurrentUser(user);
-    setUsers((previousUsers) => [
-      user,
-      ...previousUsers.filter((item) => item.id !== user.id)
-    ]);
-
     return user;
   };
 
@@ -349,7 +356,14 @@ export default function App() {
         const { data } = await supabase.auth.getSession();
 
         if (data.session?.user) {
-          await loadSignedInUser(data.session.user);
+          const user = await loadSignedInUser(data.session.user);
+          const oauthReturn = new URLSearchParams(window.location.search).get('oauth') === 'google';
+
+          if (user && oauthReturn) {
+            const savedPath = window.sessionStorage.getItem('dibuzz_oauth_return_path');
+            window.sessionStorage.removeItem('dibuzz_oauth_return_path');
+            window.location.replace(savedPath || (user.role === 'admin' ? '/admin' : '/dashboard'));
+          }
         } else {
           setCurrentUser(null);
         }
@@ -369,7 +383,23 @@ export default function App() {
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Only run once on mount
+
+  // Handle OAuth return - clean URL, only open modal if not authenticated
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isOAuthReturn = params.get('oauth') === 'google';
+
+    // Clean URL immediately
+    if (isOAuthReturn) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    // Only open modal if OAuth return AND user NOT authenticated
+    if (isOAuthReturn && !currentUser) {
+      setAuthModal({ isOpen: true, mode: 'login' });
+    }
+  }, [currentUser]);
 
   // Auth Handlers
   const handleLogin = async (email, password) => {
@@ -463,63 +493,37 @@ export default function App() {
     return { success: true };
   };
 
+  const handleGoogleAuth = async () => {
+    // Supabase returns to this page after Google completes the secure OAuth flow.
+    // The saved route lets a visitor continue where they started after signing in.
+    const returnPath = cleanPath === '/login' ? '/dashboard' : `${cleanPath}${location.hash}`;
+    window.sessionStorage.setItem('dibuzz_oauth_return_path', returnPath);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/login?oauth=google`
+      }
+    });
+
+    if (error) {
+      window.sessionStorage.removeItem('dibuzz_oauth_return_path');
+      return {
+        success: false,
+        message: error.message || 'Google sign-in could not be started.'
+      };
+    }
+
+    return { success: true };
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setUsers([]);
     localStorage.removeItem('dibuzz_current_user');
+    localStorage.removeItem('dibuzz_users');
     navigate('/');
-  };
-
-  const handleEnrollTrigger = (course) => {
-    if (!currentUser) {
-      setAuthModal({ isOpen: true, mode: 'login' });
-      return;
-    }
-
-    setPaymentCourse(course);
-  };
-
-  const handlePaymentSuccess = async (courseId, receiptData) => {
-    const updatedUser = {
-      ...currentUser,
-      enrolledCourses: Array.from(new Set([...(currentUser.enrolledCourses || []), courseId]))
-    };
-    setCurrentUser(updatedUser);
-    setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-
-    setCourses(courses.map(c => c.id === courseId ? { ...c, studentsCount: c.studentsCount + 1 } : c));
-
-    const newTxn = {
-      id: receiptData.txnId,
-      userName: receiptData.studentName,
-      userEmail: receiptData.studentEmail,
-      courseTitle: receiptData.courseTitle,
-      amount: receiptData.amount,
-      method: receiptData.method,
-      status: 'SUCCESS',
-      date: receiptData.date
-    };
-    setTransactions([newTxn, ...transactions]);
-
-    try {
-      await supabase.from('transactions').insert([{
-        id: newTxn.id,
-        user_name: newTxn.userName,
-        user_email: newTxn.userEmail,
-        course_title: newTxn.courseTitle,
-        amount: newTxn.amount,
-        method: newTxn.method,
-        status: 'SUCCESS'
-      }]);
-
-      await supabase.from('profiles').update({
-        enrolled_courses: updatedUser.enrolledCourses
-      }).eq('email', updatedUser.email);
-
-    } catch (err) {
-      console.log('Supabase txn sync err:', err);
-    }
   };
 
   // Admin Course Handlers
@@ -701,8 +705,6 @@ export default function App() {
     }
   };
 
-  const userEnrolledIds = currentUser?.enrolledCourses || [];
-
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
 
@@ -753,16 +755,7 @@ export default function App() {
         {activeTab === 'dashboard' && currentUser && (
           <StudentDashboard
             currentUser={currentUser}
-            courses={courses}
             internships={internships}
-            userTransactions={transactions.filter(t => t.userEmail === currentUser?.email)}
-            verifiedCertificates={verifiedCertificates}
-            setActiveTab={handleTabChange}
-            companyInfo={companyInfo}
-            onSelectCourse={handleSelectCourse}
-            onEnrollCourse={handleEnrollTrigger}
-            userEnrolledIds={userEnrolledIds}
-            onOpenAuthModal={handleOpenAuthModal}
           />
         )}
 
@@ -799,6 +792,8 @@ export default function App() {
             : <AccessPanel title="Sign in to DIBUZZ" text="Sign in or create an account to apply for programs and track your learning." actionLabel="Sign in" onAction={() => handleOpenAuthModal('login')} />
         )}
 
+        {activeTab === 'resetPassword' && <ResetPasswordPage />}
+
         {activeTab === 'dashboard' && !currentUser && (
           authReady
             ? <AccessPanel title="Sign in to open My Learning" text="Your programs, progress and certificates are available after you sign in." actionLabel="Sign in" onAction={() => handleOpenAuthModal('login')} />
@@ -819,27 +814,6 @@ export default function App() {
       {/* Footer */}
       <SiteFooter companyInfo={companyInfo} />
 
-      {/* Course Detail Modal */}
-      {detailCourse && (
-        <CourseDetailModal
-          course={detailCourse}
-          onClose={() => setDetailCourse(null)}
-          onEnroll={handleEnrollTrigger}
-          isEnrolled={userEnrolledIds.includes(detailCourse.id)}
-        />
-      )}
-
-      {/* Payment Gateway Modal */}
-      {paymentCourse && (
-        <PaymentModal
-          course={paymentCourse}
-          currentUser={currentUser}
-          onClose={() => setPaymentCourse(null)}
-          onPaymentSuccess={handlePaymentSuccess}
-          companyInfo={companyInfo}
-        />
-      )}
-
       {/* Auth Modal */}
       {authModal.isOpen && (
         <AuthModal
@@ -847,6 +821,11 @@ export default function App() {
           onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
           onLoginSuccess={handleLogin}
           onRegisterSuccess={handleRegister}
+          onGoogleAuth={handleGoogleAuth}
+          onForgotPassword={() => {
+            setAuthModal({ isOpen: false, mode: 'login' });
+            navigate('/reset-password');
+          }}
         />
       )}
 
