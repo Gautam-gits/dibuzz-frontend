@@ -72,7 +72,7 @@ export function CertificateVerifier({ companyInfo }) {
             <span>Public Certificate Registry</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-heading">
-            Verify MCA & MSME Recognized Certificate
+            Verify DIBUZZ Certificate
           </h1>
           <p className="text-slate-600 text-sm mt-2 max-w-xl mx-auto font-medium">
             Validate official completion credentials issued by DIBUZZ DIGITAL PRIVATE LIMITED.

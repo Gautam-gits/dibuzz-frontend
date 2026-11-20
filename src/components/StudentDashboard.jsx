@@ -200,10 +200,10 @@ export function StudentDashboard({ currentUser, internships = [] }) {
 
   const learningStats = useMemo(() => {
     const active = learning.filter(hasAccess);
-    const completed = active.filter((application) => progressMap[application.internship_id]?.percent === 100).length;
     const lessonsDone = active.reduce((sum, application) => sum + (progressMap[application.internship_id]?.done || 0), 0);
-    return { active: active.length, completed, lessonsDone };
-  }, [learning, progressMap]);
+    const certificatesEarned = certificates.filter((certificate) => certificate.status === 'issued').length;
+    return { active: active.length, certificatesEarned, lessonsDone };
+  }, [learning, progressMap, certificates]);
 
   const learningIdsKey = learning.filter(hasAccess).map((application) => application.internship_id).join(',');
 
@@ -250,6 +250,25 @@ export function StudentDashboard({ currentUser, internships = [] }) {
       active = false;
     };
   }, [learningIdsKey, userId, progressTick]);
+
+  // Keep dashboard totals current when an admin issues a certificate, an
+  // application changes, or the student marks a lesson complete elsewhere.
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    const channel = supabase
+      .channel(`student-dashboard-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'certificates', filter: `student_id=eq.${userId}` }, loadCertificates)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'internship_applications', filter: `student_id=eq.${userId}` }, loadApplications)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resource_progress', filter: `student_id=eq.${userId}` }, () => {
+        setProgressTick((value) => value + 1);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, loadApplications, loadCertificates]);
 
   const downloadCertificate = async (certificate) => {
     if (!certificate.file_path) {
@@ -362,16 +381,30 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                     </div>
                     <div className="relative z-10 mt-7 grid gap-3 sm:grid-cols-3">
                       {[
-                        ['Active programs', learningStats.active, BookOpen],
-                        ['Lessons completed', learningStats.lessonsDone, CheckCircle2],
-                        ['Certificates earned', learningStats.completed, Award],
-                      ].map(([label, value, Icon]) => (
-                        <div key={label} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        { label: 'Active programs', value: learningStats.active, icon: BookOpen },
+                        { label: 'Lessons completed', value: learningStats.lessonsDone, icon: CheckCircle2 },
+                        { label: 'Certificates earned', value: learningStats.certificatesEarned, icon: Award, onClick: () => goTo('certificates') },
+                      ].map(({ label, value, icon: Icon, onClick }) => {
+                        const content = <>
                           <Icon className="h-4 w-4 text-cyan-200" aria-hidden="true" />
                           <p className="mt-3 text-2xl font-extrabold">{value}</p>
                           <p className="mt-0.5 text-xs font-semibold text-blue-100/75">{label}</p>
-                        </div>
-                      ))}
+                        </>;
+
+                        return onClick ? (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={onClick}
+                            className="rounded-2xl border border-white/10 bg-white/10 p-4 text-left backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+                            aria-label="View my certificates"
+                          >
+                            {content}
+                          </button>
+                        ) : (
+                          <div key={label} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">{content}</div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -505,7 +538,7 @@ export function StudentDashboard({ currentUser, internships = [] }) {
                                 </div>
                               </dl>
                               <Button
-                                className="mt-6 w-full"
+                                className="mt-6 w-full bg-[#0a6fd6] text-white shadow-lg shadow-blue-200 hover:bg-[#075bb3] focus-visible:ring-[#0a6fd6]"
                                 onClick={() => downloadCertificate(certificate)}
                                 disabled={!valid || !certificate.file_path || downloadingId === certificate.id}
                               >
