@@ -352,16 +352,20 @@ export default function App() {
 
   useEffect(() => {
     const restoreSession = async () => {
+      // Capture this before any state change or URL cleanup. Google returns with
+      // ?oauth=google, and the session/profile load is asynchronous.
+      const oauthReturn = new URLSearchParams(window.location.search).get('oauth') === 'google';
+
       try {
         const { data } = await supabase.auth.getSession();
 
         if (data.session?.user) {
           const user = await loadSignedInUser(data.session.user);
-          const oauthReturn = new URLSearchParams(window.location.search).get('oauth') === 'google';
 
           if (user && oauthReturn) {
             const savedPath = window.sessionStorage.getItem('dibuzz_oauth_return_path');
             window.sessionStorage.removeItem('dibuzz_oauth_return_path');
+            setAuthModal({ isOpen: false, mode: 'login' });
             window.location.replace(savedPath || (user.role === 'admin' ? '/admin' : '/dashboard'));
           }
         } else {
@@ -385,21 +389,21 @@ export default function App() {
     };
   }, []); // Only run once on mount
 
-  // Handle OAuth return - clean URL, only open modal if not authenticated
+  // Handle a failed OAuth return only after session restoration is complete.
+  // This avoids reopening the login modal while the successful Google session is loading.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isOAuthReturn = params.get('oauth') === 'google';
 
-    // Clean URL immediately
-    if (isOAuthReturn) {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
+    if (!isOAuthReturn || !authReady) return;
 
-    // Only open modal if OAuth return AND user NOT authenticated
-    if (isOAuthReturn && !currentUser) {
+    window.history.replaceState({}, '', window.location.pathname);
+
+    // The modal is needed only when Google did not produce a usable session.
+    if (!currentUser) {
       setAuthModal({ isOpen: true, mode: 'login' });
     }
-  }, [currentUser]);
+  }, [authReady, currentUser]);
 
   // Auth Handlers
   const handleLogin = async (email, password) => {
