@@ -15,6 +15,7 @@ import { createCertificatePdf, preloadCertificateImages } from '../lib/certifica
 
 const initialForm = {
   studentId: '',
+  studentName: '',
   programName: '',
   certificateType: 'internship',
   collegeName: '',
@@ -90,8 +91,8 @@ export function CertificateManager() {
 
     const selectedStudent = students.find((student) => student.id === form.studentId);
 
-    if (!selectedStudent || !form.programName.trim()) {
-      showMessage('Please select a student and enter the program name.', 'error');
+    if (!selectedStudent || !form.studentName.trim() || !form.programName.trim()) {
+      showMessage('Please select a student, confirm their name, and enter the program name.', 'error');
       return;
     }
 
@@ -121,7 +122,9 @@ export function CertificateManager() {
         .from('certificates')
         .insert({
           student_id: selectedStudent.id,
-          student_name: selectedStudent.full_name || selectedStudent.email,
+          // The recipient account remains tied to student_id, while the printed
+          // name can be corrected for the official certificate.
+          student_name: form.studentName.trim(),
           program_name: form.programName.trim(),
           certificate_type: form.certificateType,
           college_name: form.collegeName.trim(),
@@ -460,10 +463,14 @@ export function CertificateManager() {
                   required
                   value={form.studentId}
                   onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      studentId: event.target.value
-                    }))
+                    setForm((previous) => {
+                      const student = students.find((item) => item.id === event.target.value);
+                      return {
+                        ...previous,
+                        studentId: event.target.value,
+                        studentName: student?.full_name || student?.email || ''
+                      };
+                    })
                   }
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
                 >
@@ -474,6 +481,21 @@ export function CertificateManager() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Select the student first, then correct the printed name below if needed.</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Name on Certificate <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  value={form.studentName}
+                  onChange={(event) => setForm((previous) => ({ ...previous, studentName: event.target.value }))}
+                  placeholder="Student's official name"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-100 transition"
+                />
+                <p className="mt-1.5 text-[11px] leading-4 text-slate-500">This is the name that will appear on the certificate PDF.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
