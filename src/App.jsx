@@ -363,10 +363,11 @@ export default function App() {
           const user = await loadSignedInUser(data.session.user);
 
           if (user && oauthReturn) {
-            const savedPath = window.sessionStorage.getItem('dibuzz_oauth_return_path');
             window.sessionStorage.removeItem('dibuzz_oauth_return_path');
             setAuthModal({ isOpen: false, mode: 'login' });
-            window.location.replace(savedPath || (user.role === 'admin' ? '/admin' : '/dashboard'));
+            // Google sign-in always lands in the user's workspace, not the public page
+            // that happened to be open when authentication began.
+            window.location.replace(user.role === 'admin' ? '/admin' : '/dashboard');
           }
         } else {
           setCurrentUser(null);
@@ -509,9 +510,8 @@ export default function App() {
 
   const handleGoogleAuth = async () => {
     // Supabase returns to this page after Google completes the secure OAuth flow.
-    // The saved route lets a visitor continue where they started after signing in.
-    const returnPath = cleanPath === '/login' ? '/dashboard' : `${cleanPath}${location.hash}`;
-    window.sessionStorage.setItem('dibuzz_oauth_return_path', returnPath);
+    // The return handler then routes students to My Learning and admins to Admin.
+    window.sessionStorage.removeItem('dibuzz_oauth_return_path');
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
