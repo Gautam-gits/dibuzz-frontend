@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, BookOpen, Building, Check, Eye, EyeOff,
   GraduationCap, Hash, Lock, Mail, Phone, User, X
@@ -31,7 +31,7 @@ function Field({ label, icon: Icon, children }) {
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-100';
 const iconInputClass = `${inputClass} pl-10 pr-3`;
 
-export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRegisterSuccess, onGoogleAuth, onForgotPassword }) {
+export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRegisterSuccess, onAuthenticationComplete, onGoogleAuth, onForgotPassword }) {
   const [mode, setMode] = useState(initialMode);
   const [registerStep, setRegisterStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -47,6 +47,18 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successState, setSuccessState] = useState(null);
+  const successTimer = useRef(null);
+
+  useEffect(() => () => window.clearTimeout(successTimer.current), []);
+
+  const showSuccessThenContinue = (result) => {
+    setSuccessState({
+      message: result.message || 'You are signed in successfully.',
+      destinationLabel: result.destinationLabel || 'your dashboard'
+    });
+    successTimer.current = window.setTimeout(() => onAuthenticationComplete?.(result), 1100);
+  };
 
   const resetForm = (nextMode) => {
     setMode(nextMode);
@@ -75,7 +87,8 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
     setIsSubmitting(true);
     try {
       const result = await onLoginSuccess(email, password);
-      if (!result?.success) setErrorMsg(result?.message || 'We could not sign you in. Please try again.');
+      if (result?.success) showSuccessThenContinue(result);
+      else setErrorMsg(result?.message || 'We could not sign you in. Please try again.');
     } catch {
       setErrorMsg('We could not sign you in. Please try again.');
     } finally {
@@ -102,7 +115,8 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
       const result = await onRegisterSuccess({
         name, email, password, phone, collegeRegNo, collegeName, course, branch, profileImage: null
       });
-      if (!result?.success) setErrorMsg(result?.message || 'Your account could not be created. Please try again.');
+      if (result?.success) showSuccessThenContinue(result);
+      else setErrorMsg(result?.message || 'Your account could not be created. Please try again.');
     } catch {
       setErrorMsg('Your account could not be created. Please try again.');
     } finally {
@@ -223,6 +237,20 @@ export function AuthModal({ initialMode = 'login', onClose, onLoginSuccess, onRe
           {mode === 'login' ? 'New to DIBUZZ?' : 'Already have an account?'}{' '}
           <button type="button" onClick={() => changeMode(mode === 'login' ? 'register' : 'login')} className="font-bold text-sky-700 hover:text-sky-800 cursor-pointer">{mode === 'login' ? 'Create an account' : 'Sign in'}</button>
         </p>
+
+        {successState && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-white px-7 text-center animate-fade-in-up" role="status" aria-live="polite">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-lg shadow-emerald-100">
+              <Check className="h-8 w-8" strokeWidth={3} />
+            </div>
+            <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950">Signed in successfully</h3>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-slate-600">{successState.message}</p>
+            <p className="mt-5 flex items-center gap-2 text-xs font-bold text-sky-700">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+              Taking you to {successState.destinationLabel}
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );

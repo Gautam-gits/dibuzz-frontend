@@ -425,10 +425,13 @@ export default function App() {
       };
     }
 
-    setAuthModal({ isOpen: false, mode: 'login' });
-    navigate(user.role === 'admin' ? '/admin' : '/dashboard');
-
-    return { success: true };
+    const isAdmin = user.role === 'admin';
+    return {
+      success: true,
+      message: `Welcome back, ${user.name || 'there'}!`,
+      destinationLabel: isAdmin ? 'the admin panel' : 'your learning space',
+      redirectPath: isAdmin ? '/admin' : '/dashboard'
+    };
   };
 
   const handleRegister = async (userData) => {
@@ -487,10 +490,17 @@ export default function App() {
       };
     }
 
-    setAuthModal({ isOpen: false, mode: 'login' });
-    navigate('/dashboard');
+    return {
+      success: true,
+      message: `Welcome to DIBUZZ, ${user.name || 'there'}!`,
+      destinationLabel: 'your learning space',
+      redirectPath: '/dashboard'
+    };
+  };
 
-    return { success: true };
+  const handleAuthenticationComplete = (result) => {
+    setAuthModal({ isOpen: false, mode: 'login' });
+    navigate(result?.redirectPath || '/dashboard');
   };
 
   const handleGoogleAuth = async () => {
@@ -821,6 +831,7 @@ export default function App() {
           onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
           onLoginSuccess={handleLogin}
           onRegisterSuccess={handleRegister}
+          onAuthenticationComplete={handleAuthenticationComplete}
           onGoogleAuth={handleGoogleAuth}
           onForgotPassword={() => {
             setAuthModal({ isOpen: false, mode: 'login' });
